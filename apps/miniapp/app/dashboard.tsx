@@ -14,6 +14,7 @@ import {
 } from "../components/stars-balance-card";
 import { UserHeader } from "../components/user-header";
 import { SupportButton } from "../components/support";
+import { getTelegramWebApp } from "../lib/telegram-webapp";
 
 interface DashboardData {
   user: { firstName: string; username: string | null; photoUrl: string | null };
@@ -27,8 +28,8 @@ interface AuthenticationResult {
 }
 
 async function authenticateWithTelegram(): Promise<AuthenticationResult> {
-  const webApp = window.Telegram?.WebApp;
-  webApp?.ready();
+  const webApp = getTelegramWebApp();
+  webApp?.ready?.();
   webApp?.expand?.();
   if (!webApp)
     return {
@@ -150,7 +151,7 @@ export function Dashboard(): React.ReactNode {
 
   const buyStars = useCallback(
     async (packId: string) => {
-      const webApp = window.Telegram?.WebApp;
+      const webApp = getTelegramWebApp();
       if (!webApp) {
         setError("Open this Mini App inside Telegram to buy Stars.");
         return;

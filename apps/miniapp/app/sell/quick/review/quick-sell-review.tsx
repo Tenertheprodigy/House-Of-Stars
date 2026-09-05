@@ -9,6 +9,7 @@ import {
   type QuickSellDraft,
   type QuickSellQuote,
 } from "../../../../lib/quick-sell-client";
+import { getTelegramWebApp } from "../../../../lib/telegram-webapp";
 
 function mask(value: string): string {
   if (value.length <= 12) return `${value.slice(0, 4)}…${value.slice(-3)}`;
@@ -56,7 +57,7 @@ export function QuickSellReview(): React.ReactNode {
     setSubmitting(true);
     setError(null);
     try {
-      const webApp = window.Telegram?.WebApp;
+      const webApp = getTelegramWebApp();
       if (!webApp || !webApp.initData) {
         throw new Error("Open this Mini App inside Telegram to confirm your order.");
       }

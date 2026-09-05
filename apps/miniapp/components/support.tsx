@@ -6,6 +6,7 @@ import {
 } from "@house-of-stars/shared";
 import Link from "next/link";
 import { useState } from "react";
+import { getTelegramWebApp } from "../lib/telegram-webapp";
 
 export function SupportButton({
   orderNumber,
@@ -32,7 +33,7 @@ export function SupportContacts(): React.ReactNode {
     event: React.MouseEvent<HTMLAnchorElement>,
     url: string,
   ): void {
-    const telegram = window.Telegram?.WebApp;
+    const telegram = getTelegramWebApp();
     if (!telegram?.openTelegramLink) return;
     event.preventDefault();
     telegram.openTelegramLink(url);

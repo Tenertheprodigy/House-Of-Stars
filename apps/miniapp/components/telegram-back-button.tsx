@@ -1,16 +1,17 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { getTelegramWebApp } from "../lib/telegram-webapp";
 export function TelegramBackButton(): React.ReactNode {
   const router = useRouter();
   useEffect(() => {
-    const button = window.Telegram?.WebApp?.BackButton;
+    const button = getTelegramWebApp()?.BackButton;
     const goBack = (): void => router.back();
-    button?.show();
-    button?.onClick(goBack);
+    button?.show?.();
+    button?.onClick?.(goBack);
     return () => {
-      button?.offClick(goBack);
-      button?.hide();
+      button?.offClick?.(goBack);
+      button?.hide?.();
     };
   }, [router]);
   return null;
