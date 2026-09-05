@@ -1,0 +1,22 @@
+{
+  "name": "@house-of-stars/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.0",
+    "@house-of-stars/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0"
+  }
+}
