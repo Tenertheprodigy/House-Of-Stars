@@ -4,8 +4,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./server-env": "./src/env.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server-env": {
+      "types": "./dist/env.d.ts",
+      "import": "./dist/env.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

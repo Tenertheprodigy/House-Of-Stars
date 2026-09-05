@@ -6,7 +6,7 @@ import {
   type NotificationType,
   type OrderNotificationEvent,
   type OrderNotificationSender,
-} from "./notification-service";
+} from "./notification-service.js";
 
 type Client = ReturnType<typeof createServiceRoleClient>;
 type Candidate = {

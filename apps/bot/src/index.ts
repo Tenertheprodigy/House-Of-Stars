@@ -6,12 +6,12 @@ import { z } from "zod";
 import { createServiceRoleClient } from "@house-of-stars/database";
 import { TelegramInitDataHmacVerifier } from "@house-of-stars/telegram";
 import { botEnvSchema } from "@house-of-stars/shared/server-env";
-import { createTelegramStarsInvoice } from "./payments/create-invoice";
+import { createTelegramStarsInvoice } from "./payments/create-invoice.js";
 import {
   createSupabasePaymentChargeStore,
   registerInvoiceHandlers,
-} from "./payments/handlers";
-import { startNotificationWorker } from "./notification-worker";
+} from "./payments/handlers.js";
+import { startNotificationWorker } from "./notification-worker.js";
 
 const workspaceRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

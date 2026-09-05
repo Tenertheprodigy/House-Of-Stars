@@ -3,7 +3,7 @@ import {
   createInvoicePayload,
   parseInvoicePayload,
   resolvePack,
-} from "./payload";
+} from "./payload.js";
 
 describe("Telegram Stars invoice payload", () => {
   it("serializes and parses a valid purchase payload", () => {

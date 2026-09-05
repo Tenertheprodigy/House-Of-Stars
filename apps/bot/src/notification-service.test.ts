@@ -3,7 +3,7 @@ import {
   OrderNotificationService,
   type NotificationDeliveryStore,
   type OrderNotificationEvent,
-} from "./notification-service";
+} from "./notification-service.js";
 
 const event: OrderNotificationEvent = {
   eventId: 42,

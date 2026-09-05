@@ -1,2 +1,2 @@
-export * from "./domain";
-export * from "./support";
+export * from "./domain.js";
+export * from "./support.js";

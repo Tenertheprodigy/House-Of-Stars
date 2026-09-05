@@ -125,30 +125,6 @@ export function Dashboard(): React.ReactNode {
     void load();
   }, [load]);
 
-  if (!data && !error) return <DashboardSkeleton />;
-  if (error)
-    return (
-      <main className="mx-auto grid min-h-dvh w-full max-w-lg place-items-center px-5">
-        <section className="w-full rounded-3xl bg-[var(--tg-theme-secondary-bg-color,#fff)] p-6 text-center shadow-sm">
-          <div className="mx-auto grid size-12 place-items-center rounded-full bg-red-500/15 text-xl">
-            !
-          </div>
-          <h1 className="mt-4 text-xl font-semibold">Unable to continue</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--tg-theme-hint-color,#8e8e93)]">
-            {error}
-          </p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="mt-5 min-h-12 w-full rounded-2xl bg-[var(--tg-theme-button-color,#3390ec)] px-5 font-semibold text-[var(--tg-theme-button-text-color,#fff)] active:scale-[0.98]"
-          >
-            Try again
-          </button>
-        </section>
-      </main>
-    );
-  if (!data) return null;
-
   const buyStars = useCallback(
     async (packId: string) => {
       const webApp = getTelegramWebApp();
@@ -206,6 +182,30 @@ export function Dashboard(): React.ReactNode {
     },
     [load],
   );
+
+  if (!data && !error) return <DashboardSkeleton />;
+  if (error)
+    return (
+      <main className="mx-auto grid min-h-dvh w-full max-w-lg place-items-center px-5">
+        <section className="w-full rounded-3xl bg-[var(--tg-theme-secondary-bg-color,#fff)] p-6 text-center shadow-sm">
+          <div className="mx-auto grid size-12 place-items-center rounded-full bg-red-500/15 text-xl">
+            !
+          </div>
+          <h1 className="mt-4 text-xl font-semibold">Unable to continue</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--tg-theme-hint-color,#8e8e93)]">
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="mt-5 min-h-12 w-full rounded-2xl bg-[var(--tg-theme-button-color,#3390ec)] px-5 font-semibold text-[var(--tg-theme-button-text-color,#fff)] active:scale-[0.98]"
+          >
+            Try again
+          </button>
+        </section>
+      </main>
+    );
+  if (!data) return null;
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pb-28 pt-4 sm:px-5">

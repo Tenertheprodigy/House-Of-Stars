@@ -1,6 +1,6 @@
 import { createServiceRoleClient } from "@house-of-stars/database";
 import type { Bot } from "grammy";
-import { parseInvoicePayload, resolvePack } from "./payload";
+import { parseInvoicePayload, resolvePack } from "./payload.js";
 
 export interface PaymentChargeRecordInput {
   readonly userId: string;

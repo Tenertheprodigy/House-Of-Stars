@@ -1,5 +1,5 @@
 import type { Bot } from "grammy";
-import { createInvoicePayload, resolvePack } from "./payload";
+import { createInvoicePayload, resolvePack } from "./payload.js";
 
 export interface CreateInvoiceInput {
   readonly bot: Bot;
