@@ -57,7 +57,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     telegramUser = await verifier.verify(body.initData);
   } catch (error) {
-    if (error instanceof TelegramInitDataError)
+    if (error instanceof TelegramInitDataError) {
+      console.warn("Telegram init data rejected", error.code);
       return NextResponse.json(
         {
           error: "Telegram authentication failed",
@@ -65,6 +66,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         },
         { status: 401 },
       );
+    }
     throw error;
   }
 

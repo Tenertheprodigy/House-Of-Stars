@@ -57,8 +57,16 @@ async function authenticateWithTelegram(): Promise<AuthenticationResult> {
       "Telegram launch data expired. Close this window and reopen the Mini App from the bot.",
     telegram_init_data_invalid_signature:
       "Telegram could not verify this Mini App. Confirm that the Mini App deployment uses the token for the same bot that opened it.",
-    telegram_init_data_malformed:
-      "Telegram supplied incomplete launch data. Close this window, update Telegram, and reopen the Mini App from the bot.",
+    telegram_init_data_duplicate_field:
+      "Telegram launch data contained duplicate fields. Close the window and reopen it from the bot.",
+    telegram_init_data_missing_fields:
+      "Telegram did not include a signed user identity. Open the Mini App from the bot's configured menu or /start Web App button, not from a copied website link.",
+    telegram_init_data_invalid_hash:
+      "Telegram supplied an invalid authentication hash. Close the window and reopen the Mini App from the bot.",
+    telegram_init_data_invalid_auth_date:
+      "Telegram supplied an invalid authentication timestamp. Update Telegram and reopen the Mini App.",
+    telegram_init_data_invalid_user:
+      "Telegram supplied a signed user profile that this app could not read. Update Telegram and reopen the Mini App.",
     auth_configuration:
       "Telegram authentication is not fully configured on the Mini App server.",
   };

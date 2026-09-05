@@ -4,16 +4,26 @@ import type { TelegramIdentity, TelegramInitDataVerifier } from "./index.js";
 
 const telegramUserSchema = z.object({
   id: z.number().int().positive().safe(),
-  username: z.string().min(1).optional(),
-  first_name: z.string().min(1),
-  last_name: z.string().min(1).optional(),
+  username: z.string().max(64).optional(),
+  first_name: z.string().max(256),
+  last_name: z.string().max(256).optional(),
   photo_url: z.url().optional(),
 });
+
+export type TelegramInitDataErrorCode =
+  | "missing"
+  | "duplicate_field"
+  | "missing_fields"
+  | "invalid_hash"
+  | "invalid_signature"
+  | "invalid_auth_date"
+  | "expired"
+  | "invalid_user";
 
 export class TelegramInitDataError extends Error {
   constructor(
     message: string,
-    readonly code: "missing" | "malformed" | "invalid_signature" | "expired",
+    readonly code: TelegramInitDataErrorCode,
   ) {
     super(message);
     this.name = "TelegramInitDataError";
@@ -52,7 +62,7 @@ export class TelegramInitDataHmacVerifier implements TelegramInitDataVerifier {
       if (seen.has(key))
         throw new TelegramInitDataError(
           "Duplicate init data field",
-          "malformed",
+          "duplicate_field",
         );
       seen.add(key);
     }
@@ -60,15 +70,16 @@ export class TelegramInitDataHmacVerifier implements TelegramInitDataVerifier {
     const receivedHash = parameters.get("hash");
     const authDateValue = parameters.get("auth_date");
     const userValue = parameters.get("user");
-    if (
-      !receivedHash ||
-      !authDateValue ||
-      !userValue ||
-      !/^[a-f\d]{64}$/i.test(receivedHash)
-    ) {
+    if (!receivedHash || !authDateValue || !userValue) {
       throw new TelegramInitDataError(
-        "Telegram init data is malformed",
-        "malformed",
+        "Telegram init data is missing required signed fields",
+        "missing_fields",
+      );
+    }
+    if (!/^[a-f\d]{64}$/i.test(receivedHash)) {
+      throw new TelegramInitDataError(
+        "Telegram init data hash is malformed",
+        "invalid_hash",
       );
     }
 
@@ -98,7 +109,7 @@ export class TelegramInitDataHmacVerifier implements TelegramInitDataVerifier {
     if (!Number.isSafeInteger(authDate) || authDate <= 0) {
       throw new TelegramInitDataError(
         "Telegram auth date is malformed",
-        "malformed",
+        "invalid_auth_date",
       );
     }
     const ageSeconds = Math.floor(this.now().getTime() / 1000) - authDate;
@@ -118,7 +129,7 @@ export class TelegramInitDataHmacVerifier implements TelegramInitDataVerifier {
     } catch {
       throw new TelegramInitDataError(
         "Telegram user data is malformed",
-        "malformed",
+        "invalid_user",
       );
     }
 
