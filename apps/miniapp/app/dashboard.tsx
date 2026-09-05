@@ -1,5 +1,6 @@
 "use client";
 
+// Updated dashboard - selling only
 import { useEffect, useState } from "react";
 import { DashboardSkeleton } from "../components/dashboard-skeleton";
 import { EmptyOrdersState } from "../components/empty-orders-state";
