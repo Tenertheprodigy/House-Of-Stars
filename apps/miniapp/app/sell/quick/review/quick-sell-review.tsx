@@ -56,6 +56,65 @@ export function QuickSellReview(): React.ReactNode {
     setSubmitting(true);
     setError(null);
     try {
+      const webApp = window.Telegram?.WebApp;
+      if (!webApp || !webApp.initData) {
+        throw new Error("Open this Mini App inside Telegram to confirm your order.");
+      }
+
+      const invoiceUrl =
+        process.env.NEXT_PUBLIC_BOT_API_URL?.replace(/\/+$/, "") ??
+        "http://localhost:3002";
+
+      const invoiceResponse = await fetch(`${invoiceUrl}/invoices`, {
+        method: "POST",
+        credentials: "omit",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          initData: webApp.initData,
+          purpose: "quick_sell",
+          stars: draft.quote.starsAmount,
+          orderId: draft.quote.quoteId,
+        }),
+      });
+
+      const invoiceBody = (await invoiceResponse.json().catch(() => null)) as
+        | { ok?: boolean; invoiceLink?: string; error?: string }
+        | null;
+
+      if (!invoiceResponse.ok || !invoiceBody?.ok || !invoiceBody.invoiceLink) {
+        throw new Error(
+          invoiceBody?.error ?? "We couldn't create an invoice for this order.",
+        );
+      }
+
+      const invoiceWindow = webApp as typeof webApp & {
+        openInvoice?: (
+          invoiceLink: string,
+          callback: (status: "paid" | "cancelled" | "failed") => void,
+        ) => void;
+      };
+
+      if (!invoiceWindow.openInvoice) {
+        throw new Error("This Telegram client does not support invoices.");
+      }
+
+      const invoiceLink = invoiceBody.invoiceLink;
+      const invoiceResult = await new Promise<"paid" | "cancelled" | "failed">(
+        (resolve) => {
+          invoiceWindow.openInvoice!(invoiceLink, (status) => {
+            resolve(status);
+          });
+        },
+      );
+
+      if (invoiceResult !== "paid") {
+        throw new Error(
+          invoiceResult === "cancelled"
+            ? "The order was cancelled before payment was confirmed."
+            : "The Stars invoice could not be completed.",
+        );
+      }
+
       const response = await fetch("/api/sell/quick/orders", {
         method: "POST",
         credentials: "same-origin",

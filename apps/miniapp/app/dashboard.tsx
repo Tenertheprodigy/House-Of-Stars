@@ -148,13 +148,84 @@ export function Dashboard(): React.ReactNode {
     );
   if (!data) return null;
 
+  const buyStars = useCallback(
+    async (packId: string) => {
+      const webApp = window.Telegram?.WebApp;
+      if (!webApp) {
+        setError("Open this Mini App inside Telegram to buy Stars.");
+        return;
+      }
+      if (!webApp.initData) {
+        setError("Telegram did not provide signed launch data.");
+        return;
+      }
+
+      const invoiceUrl =
+        process.env.NEXT_PUBLIC_BOT_API_URL?.replace(/\/+$/, "") ??
+        "http://localhost:3002";
+
+      const response = await fetch(`${invoiceUrl}/invoices`, {
+        method: "POST",
+        credentials: "omit",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          initData: webApp.initData,
+          packId,
+        }),
+      });
+
+      const body = (await response.json().catch(() => null)) as
+        | { ok?: boolean; invoiceLink?: string; error?: string }
+        | null;
+
+      if (!response.ok || !body?.ok || !body.invoiceLink) {
+        throw new Error(body?.error ?? "We couldn't create a Stars invoice.");
+      }
+
+      const invoiceWindow = webApp as typeof webApp & {
+        openInvoice?: (
+          invoiceLink: string,
+          callback: (status: "paid" | "cancelled" | "failed") => void,
+        ) => void;
+      };
+
+      if (!invoiceWindow.openInvoice) {
+        throw new Error("This Telegram client does not support invoices.");
+      }
+
+      invoiceWindow.openInvoice(body.invoiceLink, (status) => {
+        if (status === "paid") {
+          void load();
+          return;
+        }
+        if (status === "cancelled" || status === "failed") {
+          setError("Stars purchase was cancelled or failed.");
+        }
+      });
+    },
+    [load],
+  );
+
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pb-28 pt-4 sm:px-5">
       <UserHeader {...data.user} />
       <div className="mt-5">
         <StarsBalanceCard state={data.starsBalance} />
       </div>
-      <div className="mt-5">
+      <div className="mt-5 space-y-3">
+        <button
+          type="button"
+          onClick={() => void buyStars("starter").catch((reason) => {
+            setError(
+              reason instanceof Error
+                ? reason.message
+                : "We couldn't open the Stars invoice.",
+            );
+          })}
+          className="min-h-12 w-full rounded-2xl bg-[var(--tg-theme-button-color,#3390ec)] px-5 font-semibold text-[var(--tg-theme-button-text-color,#fff)] active:scale-[0.98]"
+        >
+          Buy 100 Stars
+        </button>
         <PrimaryActionButton href="/sell">
           Sell Telegram Stars
         </PrimaryActionButton>
