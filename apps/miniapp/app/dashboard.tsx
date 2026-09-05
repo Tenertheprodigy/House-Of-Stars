@@ -21,18 +21,57 @@ interface DashboardData {
   orders: RecentOrder[];
 }
 
-async function authenticateWithTelegram(): Promise<boolean> {
+interface AuthenticationResult {
+  authenticated: boolean;
+  error?: string;
+}
+
+async function authenticateWithTelegram(): Promise<AuthenticationResult> {
   const webApp = window.Telegram?.WebApp;
   webApp?.ready();
   webApp?.expand?.();
-  if (!webApp?.initData) return false;
+  if (!webApp)
+    return {
+      authenticated: false,
+      error:
+        "Telegram context was not detected. Open the app using the bot's menu or /start button.",
+    };
+  if (!webApp.initData)
+    return {
+      authenticated: false,
+      error:
+        "Telegram did not provide signed launch data. Close this window and reopen it using the bot's menu or /start button.",
+    };
   const response = await fetch("/api/auth/telegram", {
     method: "POST",
     credentials: "same-origin",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ initData: webApp.initData }),
   });
-  return response.ok;
+  if (response.ok) return { authenticated: true };
+  const body = (await response.json().catch(() => null)) as {
+    code?: string;
+  } | null;
+  const messages: Record<string, string> = {
+    telegram_init_data_expired:
+      "Telegram launch data expired. Close this window and reopen the Mini App from the bot.",
+    telegram_init_data_invalid_signature:
+      "Telegram could not verify this Mini App. Confirm that the Mini App deployment uses the token for the same bot that opened it.",
+    telegram_init_data_malformed:
+      "Telegram supplied incomplete launch data. Close this window, update Telegram, and reopen the Mini App from the bot.",
+    auth_configuration:
+      "Telegram authentication is not fully configured on the Mini App server.",
+  };
+  return {
+    authenticated: false,
+    error:
+      (body?.code && messages[body.code]) ||
+      (response.status === 429
+        ? "Too many authentication attempts. Wait a minute and try again."
+        : response.status === 503
+          ? "The authentication service is temporarily unavailable. Check the Mini App server configuration and database migrations."
+          : "Telegram authentication failed. Close this window and reopen the Mini App from the bot."),
+  };
 }
 
 export function Dashboard(): React.ReactNode {
@@ -45,11 +84,19 @@ export function Dashboard(): React.ReactNode {
         credentials: "same-origin",
         cache: "no-store",
       });
-      if (response.status === 401 && (await authenticateWithTelegram()))
+      if (response.status === 401) {
+        const authentication = await authenticateWithTelegram();
+        if (!authentication.authenticated)
+          throw new Error(authentication.error ?? "Authentication failed.");
         response = await fetch("/api/dashboard", {
           credentials: "same-origin",
           cache: "no-store",
         });
+        if (response.status === 401)
+          throw new Error(
+            "Telegram authentication succeeded, but the session cookie was unavailable. Allow cookies for this Mini App and reopen it.",
+          );
+      }
       if (!response.ok)
         throw new Error(
           response.status === 401

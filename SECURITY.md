@@ -12,8 +12,8 @@ Cryptocurrency signing and Telegram Stars payment processing are intentionally a
 
 - The backend validates `Telegram.WebApp.initData` with Telegram's HMAC construction, constant-time comparison, duplicate-field rejection, a five-minute default age, and future-clock-skew bounds.
 - `initDataUnsafe`, URL parameters, usernames, and client-provided Telegram user IDs are never authoritative.
-- Application sessions are HMAC-signed, expire after one hour, and use HttpOnly, SameSite=Strict cookies with Secure enabled in production.
-- Mutation middleware rejects cross-origin browser requests. SameSite cookies provide an additional CSRF boundary.
+- Application sessions are HMAC-signed and expire after one hour. Mini App production cookies are HttpOnly, Secure, partitioned, and `SameSite=None` because Telegram Web may embed the app cross-site; admin cookies remain `SameSite=Strict`.
+- Mutation middleware rejects cross-origin browser requests, providing the Mini App's CSRF boundary independently of its cross-site-compatible session cookie.
 
 ### Authorization and ownership
 

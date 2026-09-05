@@ -37,7 +37,18 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const env = envSchema.parse(process.env);
+  const parsedEnv = envSchema.safeParse(process.env);
+  if (!parsedEnv.success) {
+    console.error("Telegram authentication configuration is incomplete");
+    return NextResponse.json(
+      {
+        error: "Telegram authentication is not configured on this server",
+        code: "auth_configuration",
+      },
+      { status: 503 },
+    );
+  }
+  const env = parsedEnv.data;
   const verifier = new TelegramInitDataHmacVerifier({
     botToken: env.TELEGRAM_BOT_TOKEN,
     maxAgeSeconds: env.TELEGRAM_INIT_DATA_MAX_AGE_SECONDS,
@@ -48,7 +59,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (error) {
     if (error instanceof TelegramInitDataError)
       return NextResponse.json(
-        { error: "Telegram authentication failed" },
+        {
+          error: "Telegram authentication failed",
+          code: `telegram_init_data_${error.code}`,
+        },
         { status: 401 },
       );
     throw error;
@@ -85,10 +99,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     env.APP_SESSION_SECRET,
   );
   const response = NextResponse.json({ user: telegramUser });
+  const production = process.env.NODE_ENV === "production";
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: production,
+    sameSite: production ? "none" : "lax",
+    partitioned: production,
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
   });

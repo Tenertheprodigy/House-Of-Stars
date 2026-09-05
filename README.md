@@ -34,7 +34,7 @@ Next.js exposes only variables prefixed with `NEXT_PUBLIC_` to browser bundles. 
 
 The Mini App reads only `Telegram.WebApp.initData` and posts it to `POST /api/auth/telegram`. The backend reconstructs Telegram's sorted data-check string, verifies its HMAC-SHA-256 signature using the server-only bot token, enforces the configured authentication age, parses the signed user object, and upserts that identity in Supabase. `initDataUnsafe` is never used as identity.
 
-Successful authentication sets a signed, one-hour `HttpOnly`, `SameSite=Strict` application session cookie. Middleware protects `/api/me` and rejects missing, tampered, future-dated, or expired sessions. Add new authenticated API paths to the middleware matcher when they are introduced. Production cookies also use `Secure`.
+Successful authentication sets a signed, one-hour `HttpOnly` application session cookie. Production Mini App cookies are `Secure`, partitioned, and `SameSite=None` so they work when Telegram Web embeds the app cross-site; mutation middleware still enforces same-origin requests. Middleware protects `/api/me` and rejects missing, tampered, future-dated, or expired sessions. Add new authenticated API paths to the middleware matcher when they are introduced.
 
 Set `APP_SESSION_SECRET` to at least 32 random characters. `TELEGRAM_INIT_DATA_MAX_AGE_SECONDS` defaults to 300 seconds. Rotating the session secret invalidates all current sessions.
 
