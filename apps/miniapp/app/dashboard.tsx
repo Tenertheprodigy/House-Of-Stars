@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardSkeleton } from "../components/dashboard-skeleton";
 import { EmptyOrdersState } from "../components/empty-orders-state";
 import { PrimaryActionButton } from "../components/primary-action-button";
@@ -8,17 +8,12 @@ import {
   RecentOrderCard,
   type RecentOrder,
 } from "../components/recent-order-card";
-import {
-  StarsBalanceCard,
-  type StarsBalanceState,
-} from "../components/stars-balance-card";
 import { UserHeader } from "../components/user-header";
 import { SupportButton } from "../components/support";
-import { getTelegramWebApp } from "../lib/telegram-webapp";
 
 interface DashboardData {
   user: { firstName: string; username: string | null; photoUrl: string | null };
-  starsBalance: Exclude<StarsBalanceState, { status: "loading" | "error" }>;
+  starsBalance: { status: string };
   orders: RecentOrder[];
 }
 
@@ -125,64 +120,6 @@ export function Dashboard(): React.ReactNode {
     void load();
   }, [load]);
 
-  const buyStars = useCallback(
-    async (packId: string) => {
-      const webApp = getTelegramWebApp();
-      if (!webApp) {
-        setError("Open this Mini App inside Telegram to buy Stars.");
-        return;
-      }
-      if (!webApp.initData) {
-        setError("Telegram did not provide signed launch data.");
-        return;
-      }
-
-      const invoiceUrl =
-        process.env.NEXT_PUBLIC_BOT_API_URL?.replace(/\/+$/, "") ??
-        "http://localhost:3002";
-
-      const response = await fetch(`${invoiceUrl}/invoices`, {
-        method: "POST",
-        credentials: "omit",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          initData: webApp.initData,
-          packId,
-        }),
-      });
-
-      const body = (await response.json().catch(() => null)) as
-        | { ok?: boolean; invoiceLink?: string; error?: string }
-        | null;
-
-      if (!response.ok || !body?.ok || !body.invoiceLink) {
-        throw new Error(body?.error ?? "We couldn't create a Stars invoice.");
-      }
-
-      const invoiceWindow = webApp as typeof webApp & {
-        openInvoice?: (
-          invoiceLink: string,
-          callback: (status: "paid" | "cancelled" | "failed") => void,
-        ) => void;
-      };
-
-      if (!invoiceWindow.openInvoice) {
-        throw new Error("This Telegram client does not support invoices.");
-      }
-
-      invoiceWindow.openInvoice(body.invoiceLink, (status) => {
-        if (status === "paid") {
-          void load();
-          return;
-        }
-        if (status === "cancelled" || status === "failed") {
-          setError("Stars purchase was cancelled or failed.");
-        }
-      });
-    },
-    [load],
-  );
-
   if (!data && !error) return <DashboardSkeleton />;
   if (error)
     return (
@@ -210,23 +147,7 @@ export function Dashboard(): React.ReactNode {
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pb-28 pt-4 sm:px-5">
       <UserHeader {...data.user} />
-      <div className="mt-5">
-        <StarsBalanceCard state={data.starsBalance} />
-      </div>
-      <div className="mt-5 space-y-3">
-        <button
-          type="button"
-          onClick={() => void buyStars("starter").catch((reason) => {
-            setError(
-              reason instanceof Error
-                ? reason.message
-                : "We couldn't open the Stars invoice.",
-            );
-          })}
-          className="min-h-12 w-full rounded-2xl bg-[var(--tg-theme-button-color,#3390ec)] px-5 font-semibold text-[var(--tg-theme-button-text-color,#fff)] active:scale-[0.98]"
-        >
-          Buy 100 Stars
-        </button>
+      <div className="mt-8">
         <PrimaryActionButton href="/sell">
           Sell Telegram Stars
         </PrimaryActionButton>
