@@ -30,4 +30,29 @@ describe("Telegram Stars invoice payload", () => {
     expect(() => resolvePack({ packId: "missing" })).toThrow();
     expect(() => resolvePack({ stars: 0 })).toThrow();
   });
+
+  it("supports an arbitrary positive Quick Sell amount", () => {
+    const pack = resolvePack({ stars: 1_000 });
+
+    expect(pack).toMatchObject({ id: "custom", stars: 1_000 });
+  });
+
+  it("keeps a Quick Sell payload within Telegram's 128-byte limit", () => {
+    const raw = createInvoicePayload({
+      userId: "11111111-1111-4111-8111-111111111111",
+      stars: 1_000,
+      purpose: "quick_sell",
+      orderId: "22222222-2222-4222-8222-222222222222",
+    });
+
+    expect(Buffer.byteLength(raw, "utf8")).toBeLessThanOrEqual(128);
+    expect(parseInvoicePayload(raw)).toMatchObject({
+      userId: "11111111-1111-4111-8111-111111111111",
+      packId: "custom",
+      stars: 1_000,
+      purpose: "quick_sell",
+      orderId: "22222222-2222-4222-8222-222222222222",
+      nonce: "22222222-2222-4222-8222-222222222222",
+    });
+  });
 });

@@ -138,6 +138,32 @@ async function handleInvoiceRequest(
       return;
     }
 
+    if (payload.purpose === "quick_sell") {
+      const { data: quote, error: quoteError } = await serviceRoleClient
+        .from("order_quotes")
+        .select("id, stars_amount, expires_at, consumed_at")
+        .eq("id", payload.orderId ?? "")
+        .eq("user_id", account.id)
+        .maybeSingle();
+
+      if (quoteError) throw quoteError;
+      if (
+        !quote ||
+        quote.consumed_at ||
+        Date.parse(quote.expires_at) <= Date.now() ||
+        Number(quote.stars_amount) !== payload.stars
+      ) {
+        response.writeHead(409, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            ok: false,
+            error: "The Quick Sell quote is invalid, expired, or already used",
+          }),
+        );
+        return;
+      }
+    }
+
     const invoiceLink = await createTelegramStarsInvoice({
       bot,
       userId: account.id,

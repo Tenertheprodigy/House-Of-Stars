@@ -26,7 +26,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await Promise.all([
       supabase
         .from("order_quotes")
-        .select("payout_asset, payout_network, expires_at, consumed_at")
+        .select(
+          "stars_amount, payout_asset, payout_network, expires_at, consumed_at",
+        )
         .eq("id", body.quoteId)
         .eq("user_id", session.sub)
         .maybeSingle(),
@@ -41,6 +43,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { error: "Quote is unavailable or does not belong to this user." },
       { status: 400 },
     );
+  const { data: payment, error: paymentError } = await supabase
+    .from("payment_charges")
+    .select("id")
+    .eq("user_id", session.sub)
+    .eq("status", "paid")
+    .eq("currency", "XTR")
+    .eq("total_amount", quote.stars_amount)
+    .contains("payload", { pr: "q", o: body.quoteId })
+    .limit(1)
+    .maybeSingle();
+  if (paymentError) {
+    console.error("Quick Sell payment verification failed", paymentError.code);
+    return NextResponse.json(
+      { error: "Unable to verify the Telegram payment." },
+      { status: 500 },
+    );
+  }
+  if (!payment) {
+    return NextResponse.json(
+      { error: "Telegram payment confirmation is still processing." },
+      { status: 425 },
+    );
+  }
   const existingForQuote = (orders ?? []).find(
     (order) => order.quote_id === body.quoteId,
   );

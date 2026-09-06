@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const envBotUrl = process.env.BOT_API_URL ?? process.env.NEXT_PUBLIC_BOT_API_URL;
+const envBotUrl =
+  process.env.BOT_API_URL ?? process.env.NEXT_PUBLIC_BOT_API_URL;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!envBotUrl) {
@@ -17,7 +18,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Invalid JSON body" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -27,12 +31,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       body: JSON.stringify(body),
     });
     const text = await resp.text();
-    const contentType = resp.headers.get("content-type") ?? "application/json";
-    const headers: Record<string, string> = { "content-type": contentType };
-    return new NextResponse(text, { status: resp.status, headers });
+    let result: unknown;
+    try {
+      result = JSON.parse(text);
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Bot API returned a non-JSON response (HTTP ${resp.status})`,
+        },
+        { status: 502 },
+      );
+    }
+
+    if (!result || typeof result !== "object") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Bot API returned an invalid response (HTTP ${resp.status})`,
+        },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json(result, { status: resp.status });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: `Proxy request failed: ${message}` }, { status: 502 });
+    return NextResponse.json(
+      { ok: false, error: `Proxy request failed: ${message}` },
+      { status: 502 },
+    );
   }
 }
 

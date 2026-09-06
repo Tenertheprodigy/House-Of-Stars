@@ -42,7 +42,22 @@ export function resolvePack(input: {
   if (input.packId) {
     const key = input.packId.trim();
     const match = PACKS[key];
-    if (!match) throw new Error(`Unsupported Stars pack: ${input.packId}`);
+    if (!match) {
+      if (
+        key === "custom" &&
+        Number.isSafeInteger(input.stars) &&
+        (input.stars ?? 0) > 0
+      ) {
+        const stars = input.stars as number;
+        return {
+          id: "custom",
+          stars,
+          title: "House of Stars order",
+          description: `Order processing service for ${stars} Stars.`,
+        };
+      }
+      throw new Error(`Unsupported Stars pack: ${input.packId}`);
+    }
     return match;
   }
 
@@ -50,9 +65,17 @@ export function resolvePack(input: {
     if (!Number.isSafeInteger(input.stars) || input.stars <= 0) {
       throw new Error("Stars amount must be a positive integer");
     }
-    const match = Object.values(PACKS).find((pack) => pack.stars === input.stars);
-    if (!match) throw new Error(`Unsupported stars amount: ${input.stars}`);
-    return match;
+    const match = Object.values(PACKS).find(
+      (pack) => pack.stars === input.stars,
+    );
+    return (
+      match ?? {
+        id: "custom",
+        stars: input.stars,
+        title: "House of Stars order",
+        description: `Order processing service for ${input.stars} Stars.`,
+      }
+    );
   }
 
   throw new Error("A Stars pack or a valid star amount is required");
@@ -71,14 +94,22 @@ export function createInvoicePayload(input: {
 
   const pack = resolvePack({ packId: input.packId, stars: input.stars });
 
-  const rawPayload = {
-    u: userId,
-    p: pack.id,
-    s: pack.stars,
-    pr: input.purpose ?? "stars_purchase",
-    o: input.orderId?.trim() || undefined,
-    n: input.nonce?.trim() || crypto.randomUUID(),
-  };
+  const orderId = input.orderId?.trim() || undefined;
+  const purpose = input.purpose ?? "stars_purchase";
+  // Telegram limits invoice payloads to 128 UTF-8 bytes. Quick Sell already
+  // has a unique quote UUID, so use it as the idempotency nonce instead of
+  // adding a second UUID to the payload.
+  const rawPayload =
+    purpose === "quick_sell"
+      ? { u: userId, p: pack.id, s: pack.stars, pr: "q", o: orderId }
+      : {
+          u: userId,
+          p: pack.id,
+          s: pack.stars,
+          pr: "p",
+          o: orderId,
+          n: input.nonce?.trim() || crypto.randomUUID(),
+        };
 
   const serialized = JSON.stringify(rawPayload);
   if (Buffer.byteLength(serialized, "utf8") > 128) {
@@ -105,38 +136,61 @@ export function parseInvoicePayload(rawPayload: string): InvoicePayload {
   }
 
   const record = parsed as Record<string, unknown>;
-  const userId =
-    (typeof record.u === "string" ? record.u : typeof record.userId === "string" ? record.userId : "")
-      .trim();
-  const packId =
-    (typeof record.p === "string" ? record.p : typeof record.packId === "string" ? record.packId : "")
-      .trim();
+  const userId = (
+    typeof record.u === "string"
+      ? record.u
+      : typeof record.userId === "string"
+        ? record.userId
+        : ""
+  ).trim();
+  const packId = (
+    typeof record.p === "string"
+      ? record.p
+      : typeof record.packId === "string"
+        ? record.packId
+        : ""
+  ).trim();
   const stars = Number(record.s ?? record.stars);
   const purpose =
-    record.pr === "quick_sell" || record.pr === "stars_purchase"
-      ? record.pr
-      : record.purpose === "quick_sell" || record.purpose === "stars_purchase"
-        ? record.purpose
-        : "stars_purchase";
-  const nonce =
-    (typeof record.n === "string" ? record.n : typeof record.nonce === "string" ? record.nonce : "")
-      .trim();
-
-  if (!userId || !packId || !packId.length || !Number.isSafeInteger(stars) || stars <= 0 || !nonce) {
-    throw new Error("Invoice payload is missing required fields");
-  }
-
-  const resolved = resolvePack({ packId });
-  if (resolved.stars !== stars) {
-    throw new Error("Invoice payload star amount does not match its pack");
-  }
-
+    record.pr === "q"
+      ? "quick_sell"
+      : record.pr === "p"
+        ? "stars_purchase"
+        : record.pr === "quick_sell" || record.pr === "stars_purchase"
+          ? record.pr
+          : record.purpose === "quick_sell" ||
+              record.purpose === "stars_purchase"
+            ? record.purpose
+            : "stars_purchase";
   const orderId =
     typeof record.o === "string"
       ? record.o.trim() || undefined
       : typeof record.orderId === "string"
         ? record.orderId.trim() || undefined
         : undefined;
+  const nonce =
+    (typeof record.n === "string"
+      ? record.n
+      : typeof record.nonce === "string"
+        ? record.nonce
+        : ""
+    ).trim() || (purpose === "quick_sell" ? orderId : undefined);
+
+  if (
+    !userId ||
+    !packId ||
+    !packId.length ||
+    !Number.isSafeInteger(stars) ||
+    stars <= 0 ||
+    !nonce
+  ) {
+    throw new Error("Invoice payload is missing required fields");
+  }
+
+  const resolved = resolvePack({ packId, stars });
+  if (resolved.stars !== stars) {
+    throw new Error("Invoice payload star amount does not match its pack");
+  }
 
   return {
     userId,

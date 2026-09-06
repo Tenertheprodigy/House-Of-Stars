@@ -59,13 +59,19 @@ export function QuickSellReview(): React.ReactNode {
     try {
       const webApp = getTelegramWebApp();
       if (!webApp || !webApp.initData) {
-        throw new Error("Open this Mini App inside Telegram to confirm your order.");
+        throw new Error(
+          "Open this Mini App inside Telegram to confirm your order.",
+        );
       }
 
       // Use same-origin proxy to avoid WebView/CSP/network blocks
       const invoiceEndpoint = "/api/invoices";
 
-      let invoiceBody: { ok?: boolean; invoiceLink?: string; error?: string } | null = null;
+      let invoiceBody: {
+        ok?: boolean;
+        invoiceLink?: string;
+        error?: string;
+      } | null = null;
       try {
         const invoiceResponse = await fetch(invoiceEndpoint, {
           method: "POST",
@@ -79,18 +85,27 @@ export function QuickSellReview(): React.ReactNode {
           }),
         });
 
-        invoiceBody = (await invoiceResponse.json().catch(() => null)) as
-          | { ok?: boolean; invoiceLink?: string; error?: string }
-          | null;
+        invoiceBody = (await invoiceResponse.json().catch(() => null)) as {
+          ok?: boolean;
+          invoiceLink?: string;
+          error?: string;
+        } | null;
 
-        if (!invoiceResponse.ok || !invoiceBody?.ok || !invoiceBody.invoiceLink) {
+        if (
+          !invoiceResponse.ok ||
+          !invoiceBody?.ok ||
+          !invoiceBody.invoiceLink
+        ) {
           throw new Error(
-            invoiceBody?.error ?? "We couldn't create an invoice for this order.",
+            invoiceBody?.error ??
+              "We couldn't create an invoice for this order.",
           );
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`Unable to create invoice via proxy ${invoiceEndpoint}: ${msg}`);
+        throw new Error(
+          `Unable to create invoice via proxy ${invoiceEndpoint}: ${msg}`,
+        );
       }
 
       const invoiceWindow = webApp as typeof webApp & {
@@ -121,16 +136,22 @@ export function QuickSellReview(): React.ReactNode {
         );
       }
 
-      const response = await fetch("/api/sell/quick/orders", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          quoteId: draft.quote.quoteId,
-          walletAddress: draft.walletAddress,
-          networkConfirmed: true,
-        }),
-      });
+      let response: Response | undefined;
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        response = await fetch("/api/sell/quick/orders", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            quoteId: draft.quote.quoteId,
+            walletAddress: draft.walletAddress,
+            networkConfirmed: true,
+          }),
+        });
+        if (response.status !== 425) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 750));
+      }
+      if (!response) throw new Error("Unable to verify the Telegram payment.");
       const result = (await response.json()) as {
         orderNumber?: string;
         error?: string;

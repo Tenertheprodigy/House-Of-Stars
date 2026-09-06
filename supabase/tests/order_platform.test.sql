@@ -178,6 +178,22 @@ insert into public.order_quotes (
   500, 'GRAM', 'TON', 1, 5, 5, now() + interval '5 minutes'
 );
 
+insert into public.payment_charges (
+  user_id, telegram_payment_charge_id, payload, stars_amount,
+  total_amount, currency, status
+) values (
+  '00000000-0000-0000-0000-000000000003',
+  'test-quick-sell-charge',
+  jsonb_build_object(
+    'u', '00000000-0000-0000-0000-000000000003',
+    'p', 'custom',
+    's', 500,
+    'pr', 'q',
+    'o', '20000000-0000-4000-8000-000000000002'
+  ),
+  500, 500, 'XTR', 'paid'
+);
+
 do $$
 declare first_number bigint; retry_number bigint;
 begin

@@ -37,21 +37,6 @@ export function createSupabasePaymentChargeStore(input: {
       return (data ?? []).length > 0;
     },
     async recordPaid(payment: PaymentChargeRecordInput): Promise<void> {
-      const { data: profile, error: profileError } = await client
-        .from("users")
-        .select("stars_balance")
-        .eq("id", payment.userId)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-      if (!profile) {
-        throw new Error(
-          `No user profile found for payment user ${payment.userId}`,
-        );
-      }
-
-      const currentBalance = Number(profile.stars_balance ?? 0);
-
       const paymentPayload = JSON.parse(payment.payload) as Record<
         string,
         unknown
@@ -74,12 +59,22 @@ export function createSupabasePaymentChargeStore(input: {
         throw insertError;
       }
 
-      const { error: updateError } = await client
-        .from("users")
-        .update({ stars_balance: currentBalance + payment.stars })
-        .eq("id", payment.userId);
+      // A Quick Sell invoice pays for the order-processing service; it must
+      // not be credited back into the application's purchase balance.
+      const purpose =
+        paymentPayload.pr === "q" || paymentPayload.pr === "quick_sell"
+          ? "quick_sell"
+          : "stars_purchase";
+      if (purpose === "quick_sell") return;
 
-      if (updateError) throw updateError;
+      const { error: balanceError } = await client.rpc(
+        "increment_user_stars_balance",
+        {
+          p_user_id: payment.userId,
+          p_stars: payment.stars,
+        },
+      );
+      if (balanceError) throw balanceError;
     },
   };
 }
