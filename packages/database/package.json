@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
+    ".": "./src/index.ts",
+    "./runtime": {
+      "types": "./src/index.ts",
       "import": "./dist/index.js"
     }
   },

@@ -4,12 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./server-env": {
-      "types": "./dist/env.d.ts",
+    ".": "./src/index.ts",
+    "./server-env": "./src/env.ts",
+    "./server-env-runtime": {
+      "types": "./src/env.ts",
       "import": "./dist/env.js"
     }
   },

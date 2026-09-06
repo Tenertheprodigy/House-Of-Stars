@@ -1,11 +1,15 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Bot } from "grammy";
 import { z } from "zod";
-import { createServiceRoleClient } from "@house-of-stars/database";
-import { TelegramInitDataHmacVerifier } from "@house-of-stars/telegram";
-import { botEnvSchema } from "@house-of-stars/shared/server-env";
+import { createServiceRoleClient } from "@house-of-stars/database/runtime";
+import { TelegramInitDataHmacVerifier } from "@house-of-stars/telegram/runtime";
+import { botEnvSchema } from "@house-of-stars/shared/server-env-runtime";
 import { createTelegramStarsInvoice } from "./payments/create-invoice.js";
 import {
   createSupabasePaymentChargeStore,
@@ -67,7 +71,9 @@ async function handleInvoiceRequest(
 ): Promise<void> {
   if (request.method !== "POST") {
     response.writeHead(405, { "content-type": "application/json" });
-    response.end(JSON.stringify({ ok: false, error: "Only POST is supported" }));
+    response.end(
+      JSON.stringify({ ok: false, error: "Only POST is supported" }),
+    );
     return;
   }
 
@@ -83,7 +89,9 @@ async function handleInvoiceRequest(
 
   if (!rawBody) {
     response.writeHead(400, { "content-type": "application/json" });
-    response.end(JSON.stringify({ ok: false, error: "Request body is required" }));
+    response.end(
+      JSON.stringify({ ok: false, error: "Request body is required" }),
+    );
     return;
   }
 
@@ -93,7 +101,10 @@ async function handleInvoiceRequest(
   } catch {
     response.writeHead(400, { "content-type": "application/json" });
     response.end(
-      JSON.stringify({ ok: false, error: "Missing or invalid invoice request" }),
+      JSON.stringify({
+        ok: false,
+        error: "Missing or invalid invoice request",
+      }),
     );
     return;
   }
@@ -142,11 +153,10 @@ async function handleInvoiceRequest(
   } catch (error) {
     const description =
       error instanceof Error ? error.message : "Failed to create invoice";
-    const statusCode = /^Telegram.*failed|invalid|missing|expired|signature/i.test(
-      description,
-    )
-      ? 401
-      : 502;
+    const statusCode =
+      /^Telegram.*failed|invalid|missing|expired|signature/i.test(description)
+        ? 401
+        : 502;
     response.writeHead(statusCode, { "content-type": "application/json" });
     response.end(JSON.stringify({ ok: false, error: description }));
   }

@@ -14,6 +14,10 @@ try {
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
-  transpilePackages: ["@house-of-stars/shared", "@house-of-stars/telegram"],
+  transpilePackages: [
+    "@house-of-stars/database",
+    "@house-of-stars/shared",
+    "@house-of-stars/telegram",
+  ],
 };
 export default nextConfig;

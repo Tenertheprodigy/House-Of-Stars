@@ -1,4 +1,4 @@
-import { createServiceRoleClient } from "@house-of-stars/database";
+import { createServiceRoleClient } from "@house-of-stars/database/runtime";
 import type { Bot } from "grammy";
 import { parseInvoicePayload, resolvePack } from "./payload.js";
 
@@ -20,7 +20,10 @@ export function createSupabasePaymentChargeStore(input: {
   readonly supabaseUrl: string;
   readonly serviceRoleKey: string;
 }): PaymentChargeStore {
-  const client = createServiceRoleClient(input.supabaseUrl, input.serviceRoleKey);
+  const client = createServiceRoleClient(
+    input.supabaseUrl,
+    input.serviceRoleKey,
+  );
 
   return {
     async hasCharge(chargeId: string): Promise<boolean> {
@@ -42,22 +45,29 @@ export function createSupabasePaymentChargeStore(input: {
 
       if (profileError) throw profileError;
       if (!profile) {
-        throw new Error(`No user profile found for payment user ${payment.userId}`);
+        throw new Error(
+          `No user profile found for payment user ${payment.userId}`,
+        );
       }
 
       const currentBalance = Number(profile.stars_balance ?? 0);
 
-      const paymentPayload = JSON.parse(payment.payload) as Record<string, unknown>;
+      const paymentPayload = JSON.parse(payment.payload) as Record<
+        string,
+        unknown
+      >;
 
-      const { error: insertError } = await client.from("payment_charges").insert({
-        user_id: payment.userId,
-        telegram_payment_charge_id: payment.telegramPaymentChargeId,
-        payload: paymentPayload,
-        stars_amount: payment.stars,
-        total_amount: payment.totalAmount,
-        currency: payment.currency,
-        status: "paid",
-      });
+      const { error: insertError } = await client
+        .from("payment_charges")
+        .insert({
+          user_id: payment.userId,
+          telegram_payment_charge_id: payment.telegramPaymentChargeId,
+          payload: paymentPayload,
+          stars_amount: payment.stars,
+          total_amount: payment.totalAmount,
+          currency: payment.currency,
+          status: "paid",
+        });
 
       if (insertError) {
         if (insertError.code === "23505") return;
@@ -104,7 +114,10 @@ export function registerInvoiceHandlers(
           totalAmount,
           currency: ctx.preCheckoutQuery.currency,
         });
-        await ctx.answerPreCheckoutQuery(false, "Unable to validate your purchase");
+        await ctx.answerPreCheckoutQuery(
+          false,
+          "Unable to validate your purchase",
+        );
         return;
       }
 

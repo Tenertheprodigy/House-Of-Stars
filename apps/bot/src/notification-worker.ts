@@ -1,4 +1,4 @@
-import { createServiceRoleClient } from "@house-of-stars/database";
+import { createServiceRoleClient } from "@house-of-stars/database/runtime";
 import type { Bot } from "grammy";
 import {
   OrderNotificationService,

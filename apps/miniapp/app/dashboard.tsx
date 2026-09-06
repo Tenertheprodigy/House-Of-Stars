@@ -1,7 +1,7 @@
 "use client";
 
 // Updated dashboard - selling only
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DashboardSkeleton } from "../components/dashboard-skeleton";
 import { EmptyOrdersState } from "../components/empty-orders-state";
 import { PrimaryActionButton } from "../components/primary-action-button";
@@ -11,6 +11,7 @@ import {
 } from "../components/recent-order-card";
 import { UserHeader } from "../components/user-header";
 import { SupportButton } from "../components/support";
+import { getTelegramWebApp } from "../lib/telegram-webapp";
 
 interface DashboardData {
   user: { firstName: string; username: string | null; photoUrl: string | null };

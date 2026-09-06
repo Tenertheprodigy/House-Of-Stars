@@ -2,7 +2,7 @@ import { z } from "zod";
 export {
   TelegramInitDataError,
   TelegramInitDataHmacVerifier,
-} from "./init-data.js";
+} from "./init-data";
 
 export const telegramIdentitySchema = z.object({
   id: z.string().min(1),
