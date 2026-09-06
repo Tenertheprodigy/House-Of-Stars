@@ -10,7 +10,7 @@ const quickSellConfigSchema = z.object({
   QUICK_SELL_USD_PER_STAR: z
     .string()
     .regex(/^\d+(\.\d+)?$/)
-    .default("0.01"),
+    .default("0.001455"),
   PAYOUT_ASSETS_JSON: z.string().optional(),
   APPLE_GOOGLE_SETTLEMENT_DAYS: z.coerce.number().int().positive().default(21),
   GIFT_SETTLEMENT_DAYS: z.coerce.number().int().positive().default(7),
