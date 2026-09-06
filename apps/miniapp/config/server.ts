@@ -45,8 +45,11 @@ export function getQuickSellConfig(
         .min(1)
         .parse(JSON.parse(parsed.PAYOUT_ASSETS_JSON))
     : [
-        { asset: "ETH", network: "Ethereum", usdPerAsset: "3000" },
-        { asset: "GRAM", network: "TON", usdPerAsset: "5" },
+        {
+          asset: "ETH",
+          network: "Robinhood Chain Testnet",
+          usdPerAsset: "3000",
+        },
       ];
   return {
     quickSellMaxUsd: parsed.QUICK_SELL_MAX_USD,

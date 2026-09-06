@@ -13,6 +13,8 @@ type NetworkValidator = (
 ) => WalletValidationResult;
 const knownValidators = new Map<string, NetworkValidator>([
   ["ETH:Ethereum", validateEthereum],
+  ["ETH:Robinhood Chain", validateEthereum],
+  ["ETH:Robinhood Chain Testnet", validateEthereum],
   ["GRAM:TON", validateTon],
 ]);
 
