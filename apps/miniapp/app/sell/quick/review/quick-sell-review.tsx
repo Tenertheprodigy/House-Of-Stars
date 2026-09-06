@@ -62,15 +62,14 @@ export function QuickSellReview(): React.ReactNode {
         throw new Error("Open this Mini App inside Telegram to confirm your order.");
       }
 
-      const invoiceUrl =
-        process.env.NEXT_PUBLIC_BOT_API_URL?.replace(/\/+$/, "") ??
-        "http://localhost:3002";
+      // Use same-origin proxy to avoid WebView/CSP/network blocks
+      const invoiceEndpoint = "/api/invoices";
 
       let invoiceBody: { ok?: boolean; invoiceLink?: string; error?: string } | null = null;
       try {
-        const invoiceResponse = await fetch(`${invoiceUrl}/invoices`, {
+        const invoiceResponse = await fetch(invoiceEndpoint, {
           method: "POST",
-          credentials: "omit",
+          credentials: "same-origin",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             initData: webApp.initData,
@@ -91,7 +90,7 @@ export function QuickSellReview(): React.ReactNode {
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(`Unable to create invoice at ${invoiceUrl}/invoices: ${msg}`);
+        throw new Error(`Unable to create invoice via proxy ${invoiceEndpoint}: ${msg}`);
       }
 
       const invoiceWindow = webApp as typeof webApp & {
