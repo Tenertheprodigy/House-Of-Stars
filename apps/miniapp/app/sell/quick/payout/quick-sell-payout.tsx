@@ -147,13 +147,20 @@ export function QuickSellPayout(): React.ReactNode {
         </button>
         <button
           type="button"
-          disabled={changing || !assets.some((item) => item.category === "token")}
+          disabled={changing}
           onClick={() => {
             setPayoutMode("token");
             setValidation({ status: "idle" });
             setConfirmed(false);
             const stars = assets.find((item) => item.category === "token");
-            if (stars) void changeAsset(stars.asset);
+            if (stars) {
+              setError(null);
+              void changeAsset(stars.asset);
+            } else {
+              setError(
+                "$STARS payouts are temporarily unavailable because token pricing is not configured.",
+              );
+            }
           }}
           className={`min-h-24 rounded-2xl border p-4 text-left transition disabled:opacity-40 ${payoutMode === "token" ? "border-[var(--tg-theme-button-color,#3390ec)] bg-[var(--tg-theme-button-color,#3390ec)]/10" : "border-transparent bg-[var(--tg-theme-secondary-bg-color,#fff)]"}`}
         >
