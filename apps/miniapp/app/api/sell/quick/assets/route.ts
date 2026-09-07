@@ -10,9 +10,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
   const config = getQuickSellConfig();
   return NextResponse.json({
-    assets: config.payoutAssets.map(({ asset, network }) => ({
+    assets: config.payoutAssets.map(({ asset, network, category }) => ({
       asset,
       network,
+      category,
     })),
   });
 }

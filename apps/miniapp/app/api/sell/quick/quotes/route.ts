@@ -4,6 +4,7 @@ import { getQuickSellConfig } from "../../../../../config/server";
 import { calculateQuoteValues } from "../../../../../lib/quote";
 import { determineQuickSellEligibility } from "../../../../../lib/quick-sell-eligibility";
 import { getServerSessionContext } from "../../../../../lib/server-session";
+import { resolvePayoutAssetPrice } from "../../../../../lib/payout-asset-pricing";
 
 const requestSchema = z
   .object({
@@ -61,7 +62,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   let values;
   try {
-    values = calculateQuoteValues(body.starsAmount, asset, config);
+    values = calculateQuoteValues(
+      body.starsAmount,
+      await resolvePayoutAssetPrice(asset),
+      config,
+    );
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Invalid amount." },

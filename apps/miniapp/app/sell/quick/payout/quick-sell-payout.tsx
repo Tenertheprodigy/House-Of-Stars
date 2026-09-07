@@ -12,6 +12,7 @@ import {
 interface Asset {
   asset: string;
   network: string;
+  category: "crypto" | "stock";
 }
 type Validation =
   | { status: "idle" }
@@ -27,6 +28,7 @@ export function QuickSellPayout(): React.ReactNode {
   const [validation, setValidation] = useState<Validation>({ status: "idle" });
   const [error, setError] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
+  const [payoutMode, setPayoutMode] = useState<"crypto" | "stock">("crypto");
   useEffect(() => {
     const saved = loadQuickSellDraft();
     if (!saved || Date.parse(saved.quote.expiresAt) <= Date.now()) {
@@ -39,7 +41,10 @@ export function QuickSellPayout(): React.ReactNode {
     void fetch("/api/sell/quick/assets", { credentials: "same-origin" })
       .then(async (response) => {
         if (!response.ok) throw new Error();
-        setAssets(((await response.json()) as { assets: Asset[] }).assets);
+        const loaded = ((await response.json()) as { assets: Asset[] }).assets;
+        setAssets(loaded);
+        const current = loaded.find((item) => item.asset === saved.quote.payoutAsset);
+        setPayoutMode(current?.category ?? "crypto");
       })
       .catch(() => setError("Unable to load payout methods."));
   }, [router]);
@@ -99,6 +104,11 @@ export function QuickSellPayout(): React.ReactNode {
         <div className="h-96 rounded-3xl bg-[var(--tg-theme-secondary-bg-color,#e5e7eb)]" />
       </main>
     );
+  const selectedAsset = assets.find(
+    (item) => item.asset === draft.quote.payoutAsset,
+  );
+  const payoutSelectionComplete =
+    payoutMode === "crypto" || selectedAsset?.category === "stock";
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-5 py-5">
       <TelegramBackButton />
@@ -116,22 +126,59 @@ export function QuickSellPayout(): React.ReactNode {
         How would you like to receive your payout?
       </h1>
       <div className="mt-6 grid grid-cols-2 gap-3">
-        {assets.map((item) => (
-          <button
-            key={`${item.asset}-${item.network}`}
-            type="button"
-            disabled={changing}
-            onClick={() => void changeAsset(item.asset)}
-            className={`min-h-24 rounded-2xl border p-4 text-left transition ${draft.quote.payoutAsset === item.asset ? "border-[var(--tg-theme-button-color,#3390ec)] bg-[var(--tg-theme-button-color,#3390ec)]/10" : "border-transparent bg-[var(--tg-theme-secondary-bg-color,#fff)]"}`}
-          >
-            <span className="block text-lg font-bold">{item.asset}</span>
-            <span className="mt-1 block text-sm text-[var(--tg-theme-hint-color,#8e8e93)]">
-              Network: {item.network}
-            </span>
-          </button>
-        ))}
+        <button
+          type="button"
+          disabled={changing}
+          onClick={() => {
+            setPayoutMode("crypto");
+            const eth = assets.find((item) => item.category === "crypto");
+            if (eth) void changeAsset(eth.asset);
+          }}
+          className={`min-h-24 rounded-2xl border p-4 text-left transition ${payoutMode === "crypto" ? "border-[var(--tg-theme-button-color,#3390ec)] bg-[var(--tg-theme-button-color,#3390ec)]/10" : "border-transparent bg-[var(--tg-theme-secondary-bg-color,#fff)]"}`}
+        >
+          <span className="block text-lg font-bold">ETH</span>
+          <span className="mt-1 block text-sm text-[var(--tg-theme-hint-color,#8e8e93)]">
+            Robinhood Chain
+          </span>
+        </button>
+        <button
+          type="button"
+          disabled={changing}
+          onClick={() => {
+            setPayoutMode("stock");
+            setValidation({ status: "idle" });
+            setConfirmed(false);
+          }}
+          className={`min-h-24 rounded-2xl border p-4 text-left transition ${payoutMode === "stock" ? "border-[var(--tg-theme-button-color,#3390ec)] bg-[var(--tg-theme-button-color,#3390ec)]/10" : "border-transparent bg-[var(--tg-theme-secondary-bg-color,#fff)]"}`}
+        >
+          <span className="block text-lg font-bold">Stocks</span>
+          <span className="mt-1 block text-sm text-[var(--tg-theme-hint-color,#8e8e93)]">
+            Robinhood Stock Tokens
+          </span>
+        </button>
       </div>
-      <section className="mt-7">
+      {payoutMode === "stock" ? (
+        <label className="mt-4 block">
+          <span className="mb-2 block text-sm font-semibold">Select a stock</span>
+          <select
+            value={assets.some((item) => item.category === "stock" && item.asset === draft.quote.payoutAsset) ? draft.quote.payoutAsset : ""}
+            disabled={changing}
+            onChange={(event) => {
+              if (event.target.value) void changeAsset(event.target.value);
+            }}
+            className="min-h-14 w-full rounded-2xl bg-[var(--tg-theme-secondary-bg-color,#fff)] px-4 outline-none ring-[var(--tg-theme-button-color,#3390ec)] focus:ring-2"
+          >
+            <option value="">Choose a stock</option>
+            {assets.filter((item) => item.category === "stock").map((item) => (
+              <option key={item.asset} value={item.asset}>{item.asset}</option>
+            ))}
+          </select>
+          <span className="mt-2 block text-xs text-[var(--tg-theme-hint-color,#8e8e93)]">
+            Stock-token payouts are reviewed and processed manually.
+          </span>
+        </label>
+      ) : null}
+      {payoutSelectionComplete ? <section className="mt-7">
         <h2 className="text-xl font-bold">Wallet address</h2>
         <p className="mt-1 text-sm text-[var(--tg-theme-hint-color,#8e8e93)]">
           {draft.quote.payoutAsset} on {draft.quote.payoutNetwork}
@@ -181,11 +228,16 @@ export function QuickSellPayout(): React.ReactNode {
             I have checked that this address supports the selected network.
           </span>
         </label>
-      </section>
+      </section> : null}
       {error ? <p className="mt-4 text-sm text-red-500">{error}</p> : null}
       <button
         type="button"
-        disabled={validation.status !== "valid" || !confirmed || changing}
+        disabled={
+          !payoutSelectionComplete ||
+          validation.status !== "valid" ||
+          !confirmed ||
+          changing
+        }
         onClick={() => {
           if (validation.status === "valid") {
             const next = {

@@ -14,7 +14,6 @@ type NetworkValidator = (
 const knownValidators = new Map<string, NetworkValidator>([
   ["ETH:Ethereum", validateEthereum],
   ["ETH:Robinhood Chain", validateEthereum],
-  ["ETH:Robinhood Chain Testnet", validateEthereum],
   ["GRAM:TON", validateTon],
 ]);
 
@@ -22,7 +21,9 @@ export class DefaultWalletAddressValidator implements WalletAddressValidator {
   private readonly configured = new Map<string, NetworkValidator>();
   constructor(supportedNetworks: readonly SupportedWalletNetwork[]) {
     for (const entry of supportedNetworks) {
-      const validator = knownValidators.get(key(entry.asset, entry.network));
+      const validator =
+        knownValidators.get(key(entry.asset, entry.network)) ??
+        (entry.network === "Robinhood Chain" ? validateEthereum : undefined);
       if (validator)
         this.configured.set(key(entry.asset, entry.network), validator);
     }

@@ -8,12 +8,12 @@ const validator = new DefaultWalletAddressValidator([
 describe("network-aware wallet validation", () => {
   it("uses EVM validation for Robinhood Chain", () => {
     const robinhood = new DefaultWalletAddressValidator([
-      { asset: "ETH", network: "Robinhood Chain Testnet" },
+      { asset: "AAPL", network: "Robinhood Chain" },
     ]);
     expect(
       robinhood.validateAddress({
-        asset: "ETH",
-        network: "Robinhood Chain Testnet",
+        asset: "AAPL",
+        network: "Robinhood Chain",
         address: "0x1111111111111111111111111111111111111111",
       }).valid,
     ).toBe(true);

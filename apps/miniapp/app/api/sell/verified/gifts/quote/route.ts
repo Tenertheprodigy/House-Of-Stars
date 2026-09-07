@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getQuickSellConfig } from "../../../../../../config/server";
 import { calculateQuoteValues } from "../../../../../../lib/quote";
 import { getServerSessionContext } from "../../../../../../lib/server-session";
+import { resolvePayoutAssetPrice } from "../../../../../../lib/payout-asset-pricing";
 const schema = z
   .object({
     starsAmount: z.number().int().positive(),
@@ -78,12 +79,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { error: "Unsupported payout asset." },
       { status: 400 },
     );
-  const values = calculateQuoteValues(
-    parsed.data.starsAmount,
-    asset,
-    config,
-    false,
-  );
+  let values;
+  try {
+    values = calculateQuoteValues(
+      parsed.data.starsAmount,
+      await resolvePayoutAssetPrice(asset),
+      config,
+      false,
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to price payout asset." },
+      { status: 503 },
+    );
+  }
   const expiresAt = new Date(
     Date.now() + config.quickSellQuoteTtlSeconds * 1000,
   ).toISOString();

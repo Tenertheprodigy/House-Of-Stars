@@ -7,7 +7,9 @@ const config = {
   quickSellUsdPerStar: "0.001455",
   appleGoogleSettlementDays: 21,
   giftSettlementDays: 7,
-  payoutAssets: [{ asset: "GRAM", network: "TON", usdPerAsset: "5" }],
+  payoutAssets: [
+    { asset: "GRAM", network: "TON", usdPerAsset: "5", category: "crypto" },
+  ],
 } as const;
 describe("calculateQuoteValues", () => {
   it("calculates authoritative values with decimal arithmetic", () => {
