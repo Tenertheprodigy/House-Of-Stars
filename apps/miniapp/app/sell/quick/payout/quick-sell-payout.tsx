@@ -12,7 +12,7 @@ import {
 interface Asset {
   asset: string;
   network: string;
-  category: "crypto" | "stock";
+  category: "crypto" | "token" | "stock";
 }
 type Validation =
   | { status: "idle" }
@@ -28,7 +28,9 @@ export function QuickSellPayout(): React.ReactNode {
   const [validation, setValidation] = useState<Validation>({ status: "idle" });
   const [error, setError] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
-  const [payoutMode, setPayoutMode] = useState<"crypto" | "stock">("crypto");
+  const [payoutMode, setPayoutMode] = useState<
+    "crypto" | "token" | "stock"
+  >("crypto");
   useEffect(() => {
     const saved = loadQuickSellDraft();
     if (!saved || Date.parse(saved.quote.expiresAt) <= Date.now()) {
@@ -108,7 +110,9 @@ export function QuickSellPayout(): React.ReactNode {
     (item) => item.asset === draft.quote.payoutAsset,
   );
   const payoutSelectionComplete =
-    payoutMode === "crypto" || selectedAsset?.category === "stock";
+    payoutMode === "crypto" ||
+    (payoutMode === "token" && selectedAsset?.category === "token") ||
+    (payoutMode === "stock" && selectedAsset?.category === "stock");
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-5 py-5">
       <TelegramBackButton />
@@ -125,7 +129,7 @@ export function QuickSellPayout(): React.ReactNode {
       <h1 className="mt-1 text-3xl font-bold">
         How would you like to receive your payout?
       </h1>
-      <div className="mt-6 grid grid-cols-2 gap-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <button
           type="button"
           disabled={changing}
@@ -139,6 +143,23 @@ export function QuickSellPayout(): React.ReactNode {
           <span className="block text-lg font-bold">ETH</span>
           <span className="mt-1 block text-sm text-[var(--tg-theme-hint-color,#8e8e93)]">
             Robinhood Chain
+          </span>
+        </button>
+        <button
+          type="button"
+          disabled={changing || !assets.some((item) => item.category === "token")}
+          onClick={() => {
+            setPayoutMode("token");
+            setValidation({ status: "idle" });
+            setConfirmed(false);
+            const stars = assets.find((item) => item.category === "token");
+            if (stars) void changeAsset(stars.asset);
+          }}
+          className={`min-h-24 rounded-2xl border p-4 text-left transition disabled:opacity-40 ${payoutMode === "token" ? "border-[var(--tg-theme-button-color,#3390ec)] bg-[var(--tg-theme-button-color,#3390ec)]/10" : "border-transparent bg-[var(--tg-theme-secondary-bg-color,#fff)]"}`}
+        >
+          <span className="block text-lg font-bold">$STARS</span>
+          <span className="mt-1 block text-sm text-[var(--tg-theme-hint-color,#8e8e93)]">
+            House of Stars token
           </span>
         </button>
         <button

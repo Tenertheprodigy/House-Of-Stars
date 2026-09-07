@@ -13,6 +13,11 @@ const quickSellConfigSchema = z.object({
     .regex(/^\d+(\.\d+)?$/)
     .default("0.001455"),
   PAYOUT_ASSETS_JSON: z.string().optional(),
+  STARS_CONTRACT_ADDRESS: z
+    .string()
+    .regex(/^0x[0-9a-fA-F]{40}$/)
+    .optional(),
+  STARS_USD_PER_TOKEN: z.string().regex(/^\d+(\.\d+)?$/).optional(),
   APPLE_GOOGLE_SETTLEMENT_DAYS: z.coerce.number().int().positive().default(21),
   GIFT_SETTLEMENT_DAYS: z.coerce.number().int().positive().default(7),
   ESTIMATED_PROCESSING_DAYS: z.coerce.number().int().positive().optional(),
@@ -22,7 +27,8 @@ const payoutAssetSchema = z.object({
   asset: z.string().min(1),
   network: z.string().min(1),
   usdPerAsset: z.string().regex(/^\d+(\.\d+)?$/),
-  category: z.enum(["crypto", "stock"]).default("crypto"),
+  category: z.enum(["crypto", "token", "stock"]).default("crypto"),
+  contractAddress: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
 });
 export type PayoutAssetConfig = z.infer<typeof payoutAssetSchema>;
 
@@ -55,7 +61,20 @@ export function getQuickSellConfig(
         },
       ];
   const payoutAssets = [
-    ...configuredAssets.filter((asset) => asset.category !== "stock"),
+    ...configuredAssets.filter(
+      (asset) => asset.category !== "stock" && asset.asset !== "STARS",
+    ),
+    ...(parsed.STARS_CONTRACT_ADDRESS && parsed.STARS_USD_PER_TOKEN
+      ? [
+          {
+            asset: "STARS",
+            network: "Robinhood Chain",
+            usdPerAsset: parsed.STARS_USD_PER_TOKEN,
+            category: "token" as const,
+            contractAddress: parsed.STARS_CONTRACT_ADDRESS,
+          },
+        ]
+      : []),
     ...robinhoodStockSymbols.map((asset) => ({
       asset,
       network: "Robinhood Chain",

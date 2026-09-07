@@ -18,6 +18,18 @@ describe("network-aware wallet validation", () => {
       }).valid,
     ).toBe(true);
   });
+  it("validates an explicitly configured STARS token destination", () => {
+    const stars = new DefaultWalletAddressValidator([
+      { asset: "STARS", network: "Robinhood Chain" },
+    ]);
+    expect(
+      stars.validateAddress({
+        asset: "STARS",
+        network: "Robinhood Chain",
+        address: "0x1111111111111111111111111111111111111111",
+      }).valid,
+    ).toBe(true);
+  });
   it("validates and normalizes Ethereum addresses", () => {
     expect(
       validator.validateAddress({
