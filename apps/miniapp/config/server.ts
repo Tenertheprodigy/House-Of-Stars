@@ -11,7 +11,7 @@ const quickSellConfigSchema = z.object({
   QUICK_SELL_USD_PER_STAR: z
     .string()
     .regex(/^\d+(\.\d+)?$/)
-    .default("0.001455"),
+    .default("0.01455"),
   PAYOUT_ASSETS_JSON: z.string().optional(),
   STARS_CONTRACT_ADDRESS: z
     .string()
