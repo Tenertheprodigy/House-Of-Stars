@@ -4,6 +4,7 @@ import { getAuthorizedAdmin } from "../../../../../../lib/admin-session";
 
 const numberSchema = z.coerce.number().int().positive();
 const actionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("start_review") }),
   z.object({ action: z.literal("approve") }),
   z.object({
     action: z.literal("reject"),

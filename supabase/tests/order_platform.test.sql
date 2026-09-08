@@ -11,7 +11,7 @@ values
   ('00000000-0000-0000-0000-000000000001', 100001, 'User One'),
   ('00000000-0000-0000-0000-000000000002', 100002, 'User Two'),
   ('00000000-0000-0000-0000-000000000003', 100003, 'User Three'),
-  ('00000000-0000-0000-0000-000000000099', 100099, 'Admin');
+  ('00000000-0000-0000-0000-000000000099', null, 'Admin');
 
 insert into public.admin_users (user_id)
 values ('00000000-0000-0000-0000-000000000099');
@@ -362,8 +362,11 @@ $$;
 do $$
 declare target_id uuid := '10000000-0000-0000-0000-000000000001';
 begin
-  update public.orders set source = 'unknown', status = 'under_review', settlement_available_at = now() + interval '1 day' where id = target_id;
+  update public.orders set source = 'unknown', status = 'payment_received', settlement_available_at = now() + interval '1 day' where id = target_id;
   perform public.mark_order_wallet_validated(target_id, 'wallet-one', 'testnet');
+  perform public.admin_transition_order('00000000-0000-0000-0000-000000000099', target_id, 'start_review', null);
+  if (select status from public.orders where id = target_id) <> 'under_review' then raise exception 'admin review transition failed'; end if;
+  if not exists (select 1 from public.order_events where order_id = target_id and event_type = 'admin_start_review' and from_status = 'payment_received' and to_status = 'under_review' and actor_user_id = '00000000-0000-0000-0000-000000000099') then raise exception 'admin review audit event missing'; end if;
   perform public.admin_transition_order('00000000-0000-0000-0000-000000000099', target_id, 'approve', null);
   if (select status from public.orders where id = target_id) <> 'approved' then raise exception 'admin approval failed'; end if;
   if not exists (select 1 from public.order_events where order_id = target_id and event_type = 'admin_approve' and actor_user_id = '00000000-0000-0000-0000-000000000099') then raise exception 'admin approval audit event missing'; end if;

@@ -1,6 +1,8 @@
-export type AdminOrderAction = "approve" | "reject" | "request_more_evidence";
+export type AdminOrderAction =
+  "start_review" | "approve" | "reject" | "request_more_evidence";
 
 const transitions: Record<AdminOrderAction, ReadonlySet<string>> = {
+  start_review: new Set(["payment_received", "submitted"]),
   approve: new Set(["under_review"]),
   reject: new Set(["submitted", "under_review", "awaiting_evidence"]),
   request_more_evidence: new Set(["submitted", "under_review"]),

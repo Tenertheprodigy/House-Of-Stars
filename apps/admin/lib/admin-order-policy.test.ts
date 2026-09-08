@@ -3,6 +3,9 @@ import { canTransition, getPayoutEligibility } from "./admin-order-policy";
 
 describe("admin order policy", () => {
   it("permits only supported state transitions", () => {
+    expect(canTransition("payment_received", "start_review")).toBe(true);
+    expect(canTransition("submitted", "start_review")).toBe(true);
+    expect(canTransition("under_review", "start_review")).toBe(false);
     expect(canTransition("under_review", "approve")).toBe(true);
     expect(canTransition("submitted", "approve")).toBe(false);
     expect(canTransition("paid", "reject")).toBe(false);

@@ -24,7 +24,7 @@ export async function GET(
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id,order_number,user_id,stars_amount,payout_asset,payout_network,wallet_address,wallet_validated_at,wallet_validation_network,expected_payout_amount,status,type,source,quote_id,settlement_available_at,created_at,updated_at,users!orders_user_id_fkey(telegram_user_id,username,first_name,last_name),order_quotes!orders_quote_owner_fk(id,stars_amount,payout_asset,payout_network,expected_payout_amount,expires_at,created_at),order_events(id,event_type,from_status,to_status,payload,created_at,actor_user_id),order_evidence(id,storage_bucket,storage_path,evidence_type,sha256,mime_type,size,uploaded_at),payouts(id,status,created_at)",
+      "id,order_number,user_id,stars_amount,payout_asset,payout_network,wallet_address,wallet_validated_at,wallet_validation_network,expected_payout_amount,status,type,source,quote_id,settlement_available_at,created_at,updated_at,users!orders_user_id_fkey(telegram_user_id,username,first_name,last_name),order_quotes!orders_quote_owner_fk(id,stars_amount,payout_asset,payout_network,expected_payout_amount,expires_at,created_at),order_events(id,event_type,from_status,to_status,payload,created_at,actor_user_id),order_evidence!order_evidence_owner_fk(id,storage_bucket,storage_path,evidence_type,sha256,mime_type,size,uploaded_at),payouts(id,status,created_at)",
     )
     .eq("order_number", parsed.data)
     .order("created_at", { referencedTable: "order_events", ascending: true })
@@ -69,10 +69,15 @@ export async function GET(
       };
     }),
   );
+  const payouts = Array.isArray(order.payouts)
+    ? order.payouts
+    : order.payouts
+      ? [order.payouts]
+      : [];
   const payoutEligibility = getPayoutEligibility({
     status: order.status,
     settlementAvailableAt: order.settlement_available_at,
-    hasPayout: order.payouts.length > 0,
+    hasPayout: payouts.length > 0,
     walletValidated:
       order.wallet_validated_at !== null &&
       order.wallet_validation_network === order.payout_network,
@@ -81,6 +86,7 @@ export async function GET(
     order: {
       ...order,
       order_evidence: undefined,
+      payouts,
       evidence,
       priorOrderCount: priorOrderCount ?? 0,
       priorCompletedOrderCount: priorCompletedOrderCount ?? 0,

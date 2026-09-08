@@ -56,7 +56,12 @@ type Order = {
   payoutEligibility: { eligible: boolean; reason: string };
 };
 type AdminAction =
-  "approve" | "reject" | "request_more_evidence" | "add_note" | "queue_payout";
+  | "start_review"
+  | "approve"
+  | "reject"
+  | "request_more_evidence"
+  | "add_note"
+  | "queue_payout";
 
 export default function AdminOrderPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>();
@@ -248,6 +253,15 @@ export default function AdminOrderPage() {
         </Section>
         <Section title="Admin actions">
           <div className="flex flex-wrap gap-3">
+            <Action
+              disabled={
+                busy ||
+                !["payment_received", "submitted"].includes(order.status)
+              }
+              onClick={() => void act("start_review")}
+            >
+              Start Review
+            </Action>
             <Action
               disabled={busy || order.status !== "under_review"}
               onClick={() => void act("approve")}
