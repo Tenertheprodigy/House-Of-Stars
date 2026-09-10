@@ -156,6 +156,11 @@ export function QuickSellReview(): React.ReactNode {
         orderNumber?: string;
         error?: string;
       };
+      if (response.status === 409 && result.orderNumber) {
+        clearQuickSellDraft();
+        router.replace(`/orders/${encodeURIComponent(result.orderNumber)}`);
+        return;
+      }
       if (!response.ok || !result.orderNumber)
         throw new Error(result.error ?? "Unable to confirm order.");
       clearQuickSellDraft();

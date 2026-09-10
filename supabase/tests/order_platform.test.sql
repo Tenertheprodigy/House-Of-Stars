@@ -209,6 +209,21 @@ begin
   ) q;
   if first_number <> retry_number then raise exception 'duplicate submission created a different order'; end if;
   if (select count(*) from public.orders where quote_id = '20000000-0000-4000-8000-000000000002') <> 1 then raise exception 'quote was reused'; end if;
+  if not exists (
+    select 1 from public.orders
+    where quote_id = '20000000-0000-4000-8000-000000000002'
+      and wallet_validated_at is not null
+      and wallet_validation_network = payout_network
+  ) then raise exception 'Quick Sell wallet validation was not recorded atomically'; end if;
+  begin
+    perform * from public.create_quick_sell_order(
+      '00000000-0000-0000-0000-000000000003',
+      '20000000-0000-4000-8000-000000000002',
+      'UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAD', 10, 30
+    );
+    raise exception 'idempotent retry changed the order destination';
+  exception when sqlstate '55000' then null;
+  end;
 end;
 $$;
 

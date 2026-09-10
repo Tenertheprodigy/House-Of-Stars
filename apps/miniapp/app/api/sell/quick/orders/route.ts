@@ -34,7 +34,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .maybeSingle(),
       supabase
         .from("orders")
-        .select("status, updated_at, quote_id")
+        .select(
+          "id, order_number, status, updated_at, quote_id, wallet_address, wallet_validated_at, wallet_validation_network, payout_network",
+        )
         .eq("user_id", session.sub)
         .eq("type", "quick"),
     ]);
@@ -104,6 +106,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   });
   if (wallet.status !== "valid")
     return NextResponse.json(wallet, { status: 400 });
+  if (existingForQuote) {
+    if (
+      existingForQuote.wallet_address !== wallet.normalizedAddress ||
+      existingForQuote.payout_network !== wallet.network
+    )
+      return NextResponse.json(
+        {
+          error:
+            "This paid quote already created an order with a different destination. Open the existing order instead.",
+          orderNumber: String(existingForQuote.order_number),
+        },
+        { status: 409 },
+      );
+    if (
+      existingForQuote.wallet_validated_at &&
+      existingForQuote.wallet_validation_network === wallet.network
+    )
+      return NextResponse.json(
+        { orderNumber: String(existingForQuote.order_number) },
+        { status: 200 },
+      );
+  }
   const { data, error } = await supabase.rpc("create_quick_sell_order", {
     p_user_id: session.sub,
     p_quote_id: body.quoteId,
