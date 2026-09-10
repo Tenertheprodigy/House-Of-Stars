@@ -57,6 +57,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       flow: "verified",
       selected_source: parsed.data.source,
       expires_at: expiresAt,
+      quote_id: null,
+      order_id: null,
+      wallet_address: null,
+      wallet_confirmed: false,
+      settlement_notice_accepted_at: null,
     },
     { onConflict: "user_id,flow" },
   );

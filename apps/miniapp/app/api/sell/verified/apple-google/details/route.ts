@@ -48,14 +48,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to price payout asset." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to price payout asset.",
+      },
       { status: 503 },
     );
   }
   const expiresAt = new Date(
     Date.now() + config.quickSellQuoteTtlSeconds * 1000,
   ).toISOString();
-  const { data: quote } = await supabase
+  const { data: quote, error: quoteError } = await supabase
     .from("order_quotes")
     .insert({
       user_id: session.sub,
@@ -69,11 +74,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
     .select("id")
     .single();
-  if (!quote)
+  if (quoteError || !quote) {
+    console.error("Apple/Google quote creation failed", quoteError?.code);
     return NextResponse.json(
       { error: "Unable to create quote." },
       { status: 500 },
     );
+  }
   const { data, error } = await supabase.rpc(
     "prepare_apple_google_verified_order",
     {
@@ -84,12 +91,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     },
   );
   const order = Array.isArray(data) ? data[0] : data;
-  if (error || !order)
+  if (error || !order) {
+    console.error("Apple/Google order preparation failed", error?.code);
     return NextResponse.json(
       { error: "Accept the settlement notice before continuing." },
       { status: 409 },
     );
-  const { data: walletMarked } = await supabase.rpc(
+  }
+  const { data: walletMarked, error: walletError } = await supabase.rpc(
     "mark_order_wallet_validated",
     {
       p_order_id: order.order_id,
@@ -97,11 +106,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       p_network: wallet.network,
     },
   );
-  if (!walletMarked)
+  if (walletError || !walletMarked) {
+    console.error("Apple/Google wallet persistence failed", walletError?.code);
     return NextResponse.json(
       { error: "Unable to record wallet validation." },
       { status: 500 },
     );
+  }
   return NextResponse.json(
     {
       orderNumber: String(order.order_number),

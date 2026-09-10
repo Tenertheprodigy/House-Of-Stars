@@ -8,12 +8,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { error: "Authentication required" },
       { status: 401 },
     );
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sell_sessions")
     .select("settlement_notice_accepted_at")
     .eq("user_id", session.sub)
     .eq("selected_source", "gifts")
     .maybeSingle();
+  if (error) {
+    console.error("Gift settlement lookup failed", error.code);
+    return NextResponse.json(
+      { error: "Unable to load Gift settlement." },
+      { status: 500 },
+    );
+  }
   return NextResponse.json({
     accepted: Boolean(data?.settlement_notice_accepted_at),
     settlementDays: getQuickSellConfig().giftSettlementDays,
@@ -34,7 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { error: "Acknowledgement is required." },
       { status: 400 },
     );
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("sell_sessions")
     .update({
       settlement_notice_accepted_at: new Date().toISOString(),
@@ -44,11 +51,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .eq("selected_source", "gifts")
     .select("id")
     .maybeSingle();
-  if (!data)
+  if (error || !data) {
+    console.error("Gift settlement acknowledgement failed", error?.code);
     return NextResponse.json(
       { error: "Gift sell session unavailable." },
       { status: 409 },
     );
+  }
   return NextResponse.json({
     accepted: true,
     settlementDays: getQuickSellConfig().giftSettlementDays,

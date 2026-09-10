@@ -17,12 +17,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { error: "Authentication required" },
       { status: 401 },
     );
-  const { data: state } = await supabase
+  const { data: state, error: stateError } = await supabase
     .from("sell_sessions")
     .select("quote_id")
     .eq("user_id", session.sub)
     .eq("selected_source", "gifts")
     .maybeSingle();
+  if (stateError) {
+    console.error("Gift quote session lookup failed", stateError.code);
+    return NextResponse.json(
+      { error: "Unable to load the Gift quote session." },
+      { status: 500 },
+    );
+  }
   if (!state?.quote_id)
     return NextResponse.json({ error: "Quote unavailable." }, { status: 404 });
   const { data } = await supabase
@@ -59,12 +66,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { error: "Enter a positive whole number of Stars." },
       { status: 400 },
     );
-  const { data: state } = await supabase
+  const { data: state, error: stateError } = await supabase
     .from("sell_sessions")
     .select("id, settlement_notice_accepted_at, order_id")
     .eq("user_id", session.sub)
     .eq("selected_source", "gifts")
     .maybeSingle();
+  if (stateError) {
+    console.error("Gift sell session lookup failed", stateError.code);
+    return NextResponse.json(
+      { error: "Unable to load the Gift sell session." },
+      { status: 500 },
+    );
+  }
   if (!state?.settlement_notice_accepted_at || state.order_id)
     return NextResponse.json(
       { error: "Gift settlement step is incomplete." },
@@ -89,14 +103,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to price payout asset." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to price payout asset.",
+      },
       { status: 503 },
     );
   }
   const expiresAt = new Date(
     Date.now() + config.quickSellQuoteTtlSeconds * 1000,
   ).toISOString();
-  const { data: quote } = await supabase
+  const { data: quote, error: quoteError } = await supabase
     .from("order_quotes")
     .insert({
       user_id: session.sub,
@@ -110,17 +129,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
     .select("id")
     .single();
-  if (!quote)
+  if (quoteError || !quote) {
+    console.error("Gift quote creation failed", quoteError?.code);
     return NextResponse.json(
       { error: "Unable to create quote." },
       { status: 500 },
     );
-  await supabase
+  }
+  const { error: sessionError } = await supabase
     .from("sell_sessions")
     .update({
       quote_id: quote.id,
       expires_at: new Date(Date.now() + 86_400_000).toISOString(),
     })
     .eq("id", state.id);
+  if (sessionError) {
+    console.error("Gift quote session update failed", sessionError.code);
+    return NextResponse.json(
+      { error: "Unable to save the Gift quote." },
+      { status: 500 },
+    );
+  }
   return NextResponse.json({ quoteId: quote.id, ...values, expiresAt });
 }
