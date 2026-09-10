@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TelegramBackButton } from "../../../../../components/telegram-back-button";
+import { getTelegramWebApp } from "../../../../../lib/telegram-webapp";
 type Draft = {
   order: {
     order_number: number;
@@ -10,6 +11,7 @@ type Draft = {
     payout_network: string;
     wallet_address: string;
     expected_payout_amount: string;
+    quote_id?: string;
   };
   evidence: unknown[];
 };
@@ -40,18 +42,87 @@ export function FragmentReview({
   async function submit(): Promise<void> {
     setBusy(true);
     setError(null);
-    const r = await fetch(`/api/sell/verified/${flow}/submit`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ confirmed: true }),
-    });
-    const body = (await r.json()) as { orderNumber?: string; error?: string };
-    if (!r.ok || !body.orderNumber) {
-      setError(body.error ?? "Submission failed.");
+    try {
+      const webApp = getTelegramWebApp();
+      if (!webApp || !webApp.initData) {
+        throw new Error(
+          "Open this Mini App inside Telegram to confirm your order.",
+        );
+      }
+      if (!draft?.order.quote_id) {
+        throw new Error("This order quote is unavailable.");
+      }
+
+      const invoiceResponse = await fetch("/api/invoices", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          initData: webApp.initData,
+          purpose: "quick_sell",
+          stars: draft.order.stars_amount,
+          orderId: draft.order.quote_id,
+        }),
+      });
+
+      const invoiceBody = (await invoiceResponse.json().catch(() => null)) as {
+        ok?: boolean;
+        invoiceLink?: string;
+        error?: string;
+      } | null;
+
+      if (
+        !invoiceResponse.ok ||
+        !invoiceBody?.ok ||
+        !invoiceBody.invoiceLink
+      ) {
+        throw new Error(
+          invoiceBody?.error ?? "We couldn't create an invoice for this order.",
+        );
+      }
+
+      const invoiceWindow = webApp as typeof webApp & {
+        openInvoice?: (
+          invoiceLink: string,
+          callback: (status: "paid" | "cancelled" | "failed") => void,
+        ) => void;
+      };
+
+      if (!invoiceWindow.openInvoice) {
+        throw new Error("This Telegram client does not support invoices.");
+      }
+
+      const invoiceResult = await new Promise<"paid" | "cancelled" | "failed">
+        ((resolve) => {
+          invoiceWindow.openInvoice!(invoiceBody.invoiceLink!, (status) => {
+            resolve(status);
+          });
+        });
+
+      if (invoiceResult !== "paid") {
+        throw new Error(
+          invoiceResult === "cancelled"
+            ? "The order was cancelled before payment was confirmed."
+            : "The Stars invoice could not be completed.",
+        );
+      }
+
+      const r = await fetch(`/api/sell/verified/${flow}/submit`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirmed: true }),
+      });
+      const body = (await r.json()) as { orderNumber?: string; error?: string };
+      if (!r.ok || !body.orderNumber) {
+        throw new Error(body.error ?? "Submission failed.");
+      }
+      router.replace(`/orders/${encodeURIComponent(body.orderNumber)}`);
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Unable to confirm order.",
+      );
       setBusy(false);
-      return;
     }
-    router.replace(`/orders/${encodeURIComponent(body.orderNumber)}`);
   }
   if (!draft)
     return (
@@ -112,6 +183,14 @@ export function FragmentReview({
           {revealed ? "Hide wallet" : "Reveal wallet"}
         </button>
       </section>
+      <div className="mt-5 rounded-2xl border border-amber-400/50 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="font-semibold">Payment required before approval</p>
+        <p className="mt-2">
+          Your Stars payment must be completed before the order is approved. If
+          the Stars sent come from a different source than the evidence above,
+          they may be refunded after Telegram&apos;s 21-day transfer window.
+        </p>
+      </div>
       <label className="mt-5 flex gap-3 rounded-2xl bg-[var(--tg-theme-secondary-bg-color,#fff)] p-4">
         <input
           type="checkbox"
@@ -128,10 +207,10 @@ export function FragmentReview({
         className="mt-6 min-h-14 w-full rounded-2xl bg-[var(--tg-theme-button-color,#3390ec)] font-semibold text-[var(--tg-theme-button-text-color,#fff)] disabled:opacity-40"
       >
         {busy
-          ? "Submitting…"
+          ? "Processing payment…"
           : flow === "gifts"
-            ? "Submit Order · Step 8"
-            : "Submit Order"}
+            ? "Pay & Submit Order · Step 8"
+            : "Pay & Submit Order"}
       </button>
       <p className="mt-4 text-center text-xs text-[var(--tg-theme-hint-color,#8e8e93)]">
         No cryptocurrency transfer is performed.
