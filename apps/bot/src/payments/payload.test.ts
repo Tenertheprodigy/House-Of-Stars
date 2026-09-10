@@ -37,6 +37,26 @@ describe("Telegram Stars invoice payload", () => {
     expect(pack).toMatchObject({ id: "custom", stars: 1_000 });
   });
 
+  it("supports a verified sale invoice without reusing a quick-sell quote", () => {
+    const raw = createInvoicePayload({
+      userId: "11111111-1111-4111-8111-111111111111",
+      stars: 250,
+      purpose: "verified_sell",
+      orderId: "33333333-3333-4333-8333-333333333333",
+      nonce: "nonce-verified",
+    });
+
+    expect(Buffer.byteLength(raw, "utf8")).toBeLessThanOrEqual(128);
+    expect(parseInvoicePayload(raw)).toMatchObject({
+      userId: "11111111-1111-4111-8111-111111111111",
+      packId: "boost",
+      stars: 250,
+      purpose: "verified_sell",
+      orderId: "33333333-3333-4333-8333-333333333333",
+      nonce: "33333333-3333-4333-8333-333333333333",
+    });
+  });
+
   it("keeps a Quick Sell payload within Telegram's 128-byte limit", () => {
     const raw = createInvoicePayload({
       userId: "11111111-1111-4111-8111-111111111111",

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     supabase
       .from("orders")
       .select(
-        "order_number, stars_amount, payout_asset, payout_network, wallet_address, expected_payout_amount, status, quote_id",
+        "id, order_number, stars_amount, payout_asset, payout_network, wallet_address, expected_payout_amount, status, quote_id",
       )
       .eq("id", sellSession.order_id)
       .eq("user_id", session.sub)

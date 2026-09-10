@@ -64,8 +64,10 @@ export function createSupabasePaymentChargeStore(input: {
       const purpose =
         paymentPayload.pr === "q" || paymentPayload.pr === "quick_sell"
           ? "quick_sell"
-          : "stars_purchase";
-      if (purpose === "quick_sell") return;
+          : paymentPayload.pr === "v" || paymentPayload.pr === "verified_sell"
+            ? "verified_sell"
+            : "stars_purchase";
+      if (purpose === "quick_sell" || purpose === "verified_sell") return;
 
       const { error: balanceError } = await client.rpc(
         "increment_user_stars_balance",

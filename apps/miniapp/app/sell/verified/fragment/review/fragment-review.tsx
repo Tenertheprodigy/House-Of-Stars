@@ -5,13 +5,13 @@ import { TelegramBackButton } from "../../../../../components/telegram-back-butt
 import { getTelegramWebApp } from "../../../../../lib/telegram-webapp";
 type Draft = {
   order: {
+    id: string;
     order_number: number;
     stars_amount: number;
     payout_asset: string;
     payout_network: string;
     wallet_address: string;
     expected_payout_amount: string;
-    quote_id?: string;
   };
   evidence: unknown[];
 };
@@ -49,8 +49,8 @@ export function FragmentReview({
           "Open this Mini App inside Telegram to confirm your order.",
         );
       }
-      if (!draft?.order.quote_id) {
-        throw new Error("This order quote is unavailable.");
+      if (!draft?.order.id) {
+        throw new Error("This verified order is unavailable.");
       }
 
       const invoiceResponse = await fetch("/api/invoices", {
@@ -59,9 +59,9 @@ export function FragmentReview({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           initData: webApp.initData,
-          purpose: "quick_sell",
+          purpose: "verified_sell",
           stars: draft.order.stars_amount,
-          orderId: draft.order.quote_id,
+          orderId: draft.order.id,
         }),
       });
 

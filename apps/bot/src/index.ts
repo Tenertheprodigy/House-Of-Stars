@@ -57,7 +57,9 @@ bot.command("start", async (context) => {
 const invoiceRequestSchema = z
   .object({
     initData: z.string().min(1),
-    purpose: z.enum(["stars_purchase", "quick_sell"]).default("stars_purchase"),
+    purpose: z
+      .enum(["stars_purchase", "quick_sell", "verified_sell"])
+      .default("stars_purchase"),
     packId: z.string().trim().min(1).optional(),
     stars: z.coerce.number().int().positive().optional(),
     orderId: z.string().trim().max(128).optional(),
@@ -158,6 +160,31 @@ async function handleInvoiceRequest(
           JSON.stringify({
             ok: false,
             error: "The Quick Sell quote is invalid, expired, or already used",
+          }),
+        );
+        return;
+      }
+    }
+
+    if (payload.purpose === "verified_sell") {
+      const { data: order, error: orderError } = await serviceRoleClient
+        .from("orders")
+        .select("id, status, stars_amount")
+        .eq("id", payload.orderId ?? "")
+        .eq("user_id", account.id)
+        .maybeSingle();
+
+      if (orderError) throw orderError;
+      if (
+        !order ||
+        order.status !== "draft" ||
+        Number(order.stars_amount) !== payload.stars
+      ) {
+        response.writeHead(409, { "content-type": "application/json" });
+        response.end(
+          JSON.stringify({
+            ok: false,
+            error: "The verified sale order is invalid, not in draft, or already paid",
           }),
         );
         return;

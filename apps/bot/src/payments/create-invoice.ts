@@ -6,7 +6,7 @@ export interface CreateInvoiceInput {
   readonly userId: string;
   readonly packId?: string;
   readonly stars?: number;
-  readonly purpose?: "stars_purchase" | "quick_sell";
+  readonly purpose?: "stars_purchase" | "quick_sell" | "verified_sell";
   readonly orderId?: string;
   readonly nonce?: string;
 }

@@ -9,7 +9,7 @@ export interface InvoicePayload {
   readonly userId: string;
   readonly packId: string;
   readonly stars: number;
-  readonly purpose?: "stars_purchase" | "quick_sell";
+  readonly purpose?: "stars_purchase" | "quick_sell" | "verified_sell";
   readonly orderId?: string;
   readonly nonce: string;
 }
@@ -85,7 +85,7 @@ export function createInvoicePayload(input: {
   readonly userId: string;
   readonly packId?: string;
   readonly stars?: number;
-  readonly purpose?: "stars_purchase" | "quick_sell";
+  readonly purpose?: "stars_purchase" | "quick_sell" | "verified_sell";
   readonly orderId?: string;
   readonly nonce?: string;
 }): string {
@@ -96,20 +96,22 @@ export function createInvoicePayload(input: {
 
   const orderId = input.orderId?.trim() || undefined;
   const purpose = input.purpose ?? "stars_purchase";
-  // Telegram limits invoice payloads to 128 UTF-8 bytes. Quick Sell already
-  // has a unique quote UUID, so use it as the idempotency nonce instead of
-  // adding a second UUID to the payload.
+  // Telegram limits invoice payloads to 128 UTF-8 bytes. Keep the payload
+  // small and use the order id as the idempotency nonce for the non-purchase
+  // cases that are tied to a verified service order.
   const rawPayload =
     purpose === "quick_sell"
       ? { u: userId, p: pack.id, s: pack.stars, pr: "q", o: orderId }
-      : {
-          u: userId,
-          p: pack.id,
-          s: pack.stars,
-          pr: "p",
-          o: orderId,
-          n: input.nonce?.trim() || crypto.randomUUID(),
-        };
+      : purpose === "verified_sell"
+        ? { u: userId, p: pack.id, s: pack.stars, pr: "v", o: orderId }
+        : {
+            u: userId,
+            p: pack.id,
+            s: pack.stars,
+            pr: "p",
+            o: orderId,
+            n: input.nonce?.trim() || crypto.randomUUID(),
+          };
 
   const serialized = JSON.stringify(rawPayload);
   if (Buffer.byteLength(serialized, "utf8") > 128) {
@@ -154,14 +156,19 @@ export function parseInvoicePayload(rawPayload: string): InvoicePayload {
   const purpose =
     record.pr === "q"
       ? "quick_sell"
-      : record.pr === "p"
-        ? "stars_purchase"
-        : record.pr === "quick_sell" || record.pr === "stars_purchase"
-          ? record.pr
-          : record.purpose === "quick_sell" ||
-              record.purpose === "stars_purchase"
-            ? record.purpose
-            : "stars_purchase";
+      : record.pr === "v"
+        ? "verified_sell"
+        : record.pr === "p"
+          ? "stars_purchase"
+          : record.pr === "quick_sell" ||
+              record.pr === "verified_sell" ||
+              record.pr === "stars_purchase"
+            ? record.pr
+            : record.purpose === "quick_sell" ||
+                record.purpose === "verified_sell" ||
+                record.purpose === "stars_purchase"
+              ? record.purpose
+              : "stars_purchase";
   const orderId =
     typeof record.o === "string"
       ? record.o.trim() || undefined
@@ -174,7 +181,10 @@ export function parseInvoicePayload(rawPayload: string): InvoicePayload {
       : typeof record.nonce === "string"
         ? record.nonce
         : ""
-    ).trim() || (purpose === "quick_sell" ? orderId : undefined);
+    ).trim() ||
+    (purpose === "quick_sell" || purpose === "verified_sell"
+      ? orderId
+      : undefined);
 
   if (
     !userId ||
