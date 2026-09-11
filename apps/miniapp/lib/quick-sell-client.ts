@@ -6,6 +6,12 @@ export interface QuickSellQuote {
   payoutNetwork: string;
   payoutAmount: string;
   exchangeRate: string;
+  fees: string;
+  netUsdValue: string;
+  starUsdRate: string;
+  platformFeePercent: string;
+  priceSource: string;
+  priceUpdatedAt: string | null;
   expiresAt: string;
   consumed?: boolean;
 }

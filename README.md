@@ -40,7 +40,7 @@ Set `APP_SESSION_SECRET` to at least 32 random characters. `TELEGRAM_INIT_DATA_M
 
 ## Quick Sell quoting
 
-The Quick Sell wizard uses persisted, short-lived server quotes. Development defaults are controlled by `QUICK_SELL_MAX_USD`, `QUICK_SELL_COOLDOWN_DAYS`, `QUICK_SELL_QUOTE_TTL_SECONDS`, and `QUICK_SELL_USD_PER_STAR`. Configurable payout assets are supplied through `PAYOUT_ASSETS_JSON`; each entry must name both an asset and its blockchain network. The built-in rates are development placeholders and must be replaced by an approved server-side pricing source before production.
+The Quick Sell and verified-sell wizards use persisted, short-lived server quotes. The gross Stars value is controlled by `STAR_USD_RATE` (default `0.0145`) and `PLATFORM_FEE_PERCENT` (default `3`) is deducted before conversion to the payout asset. ETH quotes read the official Chainlink ETH/USD aggregator through `CHAINLINK_ETHEREUM_RPC_URL`; the feed address, maximum age, timeout, and retry count are server-only configuration. Robinhood Stock Token quotes use the allowlisted symbol's bid from `GET https://api.robinhood.com/rhj/prices/{SYMBOL}` and current multiplier metadata from `/rhj/assets`. Configurable non-stock payout assets are supplied through `PAYOUT_ASSETS_JSON`; each entry must name both an asset and its blockchain network.
 
 Order confirmation calls a service-role-only PostgreSQL function that locks and consumes the quote while creating the order. The function rechecks ownership, expiry, maximum value, cooldown, and active-order eligibility. It never broadcasts or signs a cryptocurrency transaction.
 

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     values = calculateQuoteValues(
       parsed.data.starsAmount,
-      await resolvePayoutAssetPrice(asset),
+      await resolvePayoutAssetPrice(asset, config),
       config,
       false,
     );
@@ -70,6 +70,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       payout_network: values.payoutNetwork,
       expected_payout_amount: values.payoutAmount,
       exchange_rate: values.exchangeRate,
+      fees: values.fees,
+      price_source: values.priceSource,
+      price_updated_at: values.priceUpdatedAt,
       expires_at: expiresAt,
     })
     .select("id")
@@ -116,7 +119,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json(
     {
       orderNumber: String(order.order_number),
-      quote: { quoteId: quote.id, ...values, expiresAt },
+      quote: {
+        quoteId: quote.id,
+        ...values,
+        starUsdRate: config.quickSellUsdPerStar,
+        platformFeePercent: config.platformFeeRate,
+        expiresAt,
+      },
     },
     { status: 201 },
   );

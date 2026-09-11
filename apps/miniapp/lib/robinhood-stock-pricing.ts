@@ -20,9 +20,11 @@ const priceResponseSchema = z.object({
   quotes: z.array(
     z.object({
       tokenSymbol: z.string(),
+      bid: z.string(),
       ask: z.string(),
       currency: z.literal("USD"),
       isTradingHalt: z.boolean(),
+      generatedAt: z.string().datetime(),
       deployments: z.array(deploymentSchema),
     }),
   ),
@@ -34,42 +36,83 @@ interface CachedAssets {
 }
 let assetsCache: CachedAssets | undefined;
 
-async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, {
-    headers: { accept: "application/json" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(5_000),
+async function fetchJson(
+  url: string,
+  timeoutMs = 5_000,
+  retries = 2,
+): Promise<unknown> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        headers: { accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!response.ok)
+        throw new Error(`Robinhood returned ${response.status}`);
+      return response.json();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  console.error("Robinhood Stock Token price read failed", {
+    cause: lastError instanceof Error ? lastError.name : "unknown",
   });
-  if (!response.ok) throw new Error("Robinhood pricing service is unavailable");
-  return response.json();
+  throw new Error("The selected Stock Token quote is temporarily unavailable.");
 }
 
 async function getAssets(): Promise<z.infer<typeof assetSchema>[]> {
-  if (assetsCache && assetsCache.expiresAt > Date.now()) return assetsCache.value;
-  const parsed = assetsResponseSchema.parse(await fetchJson(`${API_BASE}/assets`));
+  if (assetsCache && assetsCache.expiresAt > Date.now())
+    return assetsCache.value;
+  const parsed = assetsResponseSchema.parse(
+    await fetchJson(`${API_BASE}/assets`),
+  );
   assetsCache = { value: parsed.assets, expiresAt: Date.now() + 300_000 };
   return parsed.assets;
 }
 
-export async function getRobinhoodStockUsdPrice(symbol: string): Promise<string> {
-  if (!isRobinhoodStockSymbol(symbol)) throw new Error("Unsupported stock token");
+export async function getRobinhoodStockUsdPrice(
+  symbol: string,
+  options: { timeoutMs?: number; retries?: number } = {},
+): Promise<{
+  usdPrice: string;
+  updatedAt: string;
+  source: "robinhood_stock_token_bid";
+}> {
+  if (!isRobinhoodStockSymbol(symbol))
+    throw new Error("Unsupported stock token");
   const [assets, pricesValue] = await Promise.all([
     getAssets(),
-    fetchJson(`${API_BASE}/prices/${encodeURIComponent(symbol)}`),
+    fetchJson(
+      `${API_BASE}/prices/${encodeURIComponent(symbol)}`,
+      options.timeoutMs,
+      options.retries,
+    ),
   ]);
   const metadata = assets.find((item) => item.tokenSymbol === symbol);
   const quote = priceResponseSchema
     .parse(pricesValue)
     .quotes.find((item) => item.tokenSymbol === symbol);
-  const onMainnet = (deployments: z.infer<typeof deploymentSchema>[]): boolean =>
-    deployments.some((item) => item.chainId === ROBINHOOD_CHAIN_ID);
-  if (!metadata || metadata.status !== "ASSET_STATUS_ACTIVE" || !onMainnet(metadata.deployments)) {
+  const onMainnet = (
+    deployments: z.infer<typeof deploymentSchema>[],
+  ): boolean => deployments.some((item) => item.chainId === ROBINHOOD_CHAIN_ID);
+  if (
+    !metadata ||
+    metadata.status !== "ASSET_STATUS_ACTIVE" ||
+    !onMainnet(metadata.deployments)
+  ) {
     throw new Error("This stock token is not active on Robinhood Chain");
   }
   if (!quote || quote.isTradingHalt || !onMainnet(quote.deployments)) {
     throw new Error("A quote is currently unavailable for this stock token");
   }
-  const price = new Decimal(quote.ask).mul(metadata.currentMultiplier);
-  if (!price.isFinite() || price.lte(0)) throw new Error("Invalid stock-token price");
-  return price.toDecimalPlaces(18).toFixed(18);
+  const price = new Decimal(quote.bid).mul(metadata.currentMultiplier);
+  if (!price.isFinite() || price.lte(0))
+    throw new Error("Invalid stock-token price");
+  return {
+    usdPrice: price.toDecimalPlaces(18).toFixed(18),
+    updatedAt: new Date(quote.generatedAt).toISOString(),
+    source: "robinhood_stock_token_bid",
+  };
 }

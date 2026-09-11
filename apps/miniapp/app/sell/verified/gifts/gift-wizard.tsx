@@ -11,6 +11,11 @@ type Quote = {
   payoutNetwork: string;
   payoutAmount: string;
   exchangeRate: string;
+  fees: string;
+  netUsdValue: string;
+  starUsdRate: string;
+  platformFeePercent: string;
+  priceUpdatedAt: string | null;
   expiresAt: string;
 };
 type Asset = { asset: string; network: string };
@@ -160,15 +165,39 @@ function QuoteCard({ quote }: { quote: Quote }): React.ReactNode {
           <dd>⭐ {quote.starsAmount.toLocaleString()}</dd>
         </div>
         <div className="flex justify-between">
-          <dt>Estimated value</dt>
+          <dt>Rate</dt>
+          <dd>${quote.starUsdRate} per Star</dd>
+        </div>
+        <div className="flex justify-between">
+          <dt>Gross USD value</dt>
           <dd>${quote.usdValue}</dd>
         </div>
         <div className="flex justify-between">
-          <dt>Rate</dt>
+          <dt>Platform fee ({quote.platformFeePercent}%)</dt>
+          <dd>-${Number(quote.fees).toFixed(2)}</dd>
+        </div>
+        <div className="flex justify-between">
+          <dt>Net payout value</dt>
+          <dd>${quote.netUsdValue}</dd>
+        </div>
+        <div className="flex justify-between">
+          <dt>{quote.payoutAsset} price</dt>
           <dd>
-            ${quote.exchangeRate} / {quote.payoutAsset}
+            $
+            {Number(quote.exchangeRate).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </dd>
         </div>
+        {quote.priceUpdatedAt ? (
+          <div className="flex justify-between gap-4 text-xs">
+            <dt>Price timestamp</dt>
+            <dd className="text-right">
+              {new Date(quote.priceUpdatedAt).toLocaleString()}
+            </dd>
+          </div>
+        ) : null}
         <div className="flex justify-between">
           <dt>You receive</dt>
           <dd>

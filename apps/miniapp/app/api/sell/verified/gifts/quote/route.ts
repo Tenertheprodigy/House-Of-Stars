@@ -35,7 +35,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { data } = await supabase
     .from("order_quotes")
     .select(
-      "id, stars_amount, usd_value, payout_asset, payout_network, expected_payout_amount, exchange_rate, expires_at",
+      "id, stars_amount, usd_value, payout_asset, payout_network, expected_payout_amount, exchange_rate, fees, price_source, price_updated_at, expires_at",
     )
     .eq("id", state.quote_id)
     .eq("user_id", session.sub)
@@ -50,6 +50,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     payoutNetwork: data.payout_network,
     payoutAmount: data.expected_payout_amount,
     exchangeRate: data.exchange_rate,
+    fees: data.fees,
+    netUsdValue: new (await import("decimal.js")).default(data.usd_value)
+      .sub(data.fees)
+      .toFixed(2),
+    starUsdRate: getQuickSellConfig().quickSellUsdPerStar,
+    platformFeePercent: getQuickSellConfig().platformFeeRate,
+    priceSource: data.price_source,
+    priceUpdatedAt: data.price_updated_at,
     expiresAt: data.expires_at,
   });
 }
@@ -97,7 +105,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     values = calculateQuoteValues(
       parsed.data.starsAmount,
-      await resolvePayoutAssetPrice(asset),
+      await resolvePayoutAssetPrice(asset, config),
       config,
       false,
     );
@@ -125,6 +133,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       payout_network: values.payoutNetwork,
       expected_payout_amount: values.payoutAmount,
       exchange_rate: values.exchangeRate,
+      fees: values.fees,
+      price_source: values.priceSource,
+      price_updated_at: values.priceUpdatedAt,
       expires_at: expiresAt,
     })
     .select("id")
@@ -150,5 +161,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 500 },
     );
   }
-  return NextResponse.json({ quoteId: quote.id, ...values, expiresAt });
+  return NextResponse.json({
+    quoteId: quote.id,
+    ...values,
+    starUsdRate: config.quickSellUsdPerStar,
+    platformFeePercent: config.platformFeeRate,
+    expiresAt,
+  });
 }

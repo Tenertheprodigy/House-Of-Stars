@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { TelegramBackButton } from "../../../../../components/telegram-back-button";
 import { getTelegramWebApp } from "../../../../../lib/telegram-webapp";
 type Draft = {
+  starUsdRate: string;
+  platformFeePercent: string;
   order: {
     id: string;
     order_number: number;
@@ -13,6 +15,13 @@ type Draft = {
     wallet_address: string;
     expected_payout_amount: string;
   };
+  quote: {
+    usd_value: string;
+    fees: string;
+    exchange_rate: string;
+    price_source: string | null;
+    price_updated_at: string | null;
+  } | null;
   evidence: unknown[];
 };
 const mask = (value: string): string =>
@@ -71,11 +80,7 @@ export function FragmentReview({
         error?: string;
       } | null;
 
-      if (
-        !invoiceResponse.ok ||
-        !invoiceBody?.ok ||
-        !invoiceBody.invoiceLink
-      ) {
+      if (!invoiceResponse.ok || !invoiceBody?.ok || !invoiceBody.invoiceLink) {
         throw new Error(
           invoiceBody?.error ?? "We couldn't create an invoice for this order.",
         );
@@ -92,12 +97,13 @@ export function FragmentReview({
         throw new Error("This Telegram client does not support invoices.");
       }
 
-      const invoiceResult = await new Promise<"paid" | "cancelled" | "failed">
-        ((resolve) => {
+      const invoiceResult = await new Promise<"paid" | "cancelled" | "failed">(
+        (resolve) => {
           invoiceWindow.openInvoice!(invoiceBody.invoiceLink!, (status) => {
             resolve(status);
           });
-        });
+        },
+      );
 
       if (invoiceResult !== "paid") {
         throw new Error(
@@ -140,6 +146,37 @@ export function FragmentReview({
           ? "Gifts"
           : "Fragment / Other Providers",
     ],
+    ["Rate", `$${draft.starUsdRate} per Star`],
+    [
+      "Gross USD value",
+      draft.quote
+        ? `$${Number(draft.quote.usd_value).toFixed(2)}`
+        : "Unavailable",
+    ],
+    [
+      `Platform fee (${draft.platformFeePercent}%)`,
+      draft.quote ? `-$${Number(draft.quote.fees).toFixed(2)}` : "Unavailable",
+    ],
+    [
+      "Net payout value",
+      draft.quote
+        ? `$${(Number(draft.quote.usd_value) - Number(draft.quote.fees)).toFixed(2)}`
+        : "Unavailable",
+    ],
+    [
+      `${draft.order.payout_asset} price`,
+      draft.quote
+        ? `$${Number(draft.quote.exchange_rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : "Unavailable",
+    ],
+    ...(draft.quote?.price_updated_at
+      ? [
+          [
+            "Price timestamp",
+            new Date(draft.quote.price_updated_at).toLocaleString(),
+          ],
+        ]
+      : []),
     [
       "Quote",
       `${draft.order.expected_payout_amount} ${draft.order.payout_asset}`,

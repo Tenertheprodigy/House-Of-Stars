@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSessionContext } from "../../../../../../lib/server-session";
+import { getQuickSellConfig } from "../../../../../../config/server";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { session, supabase } = await getServerSessionContext(request);
@@ -38,5 +39,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   ]);
   if (!order)
     return NextResponse.json({ error: "Draft unavailable." }, { status: 404 });
-  return NextResponse.json({ order, evidence: evidence ?? [] });
+  const { data: quote } = await supabase
+    .from("order_quotes")
+    .select("usd_value, fees, exchange_rate, price_source, price_updated_at")
+    .eq("id", order.quote_id)
+    .eq("user_id", session.sub)
+    .single();
+  const config = getQuickSellConfig();
+  return NextResponse.json({
+    order,
+    quote,
+    starUsdRate: config.quickSellUsdPerStar,
+    platformFeePercent: config.platformFeeRate,
+    evidence: evidence ?? [],
+  });
 }

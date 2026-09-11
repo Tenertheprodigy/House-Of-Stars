@@ -127,16 +127,48 @@ export function QuickSellAmount(): React.ReactNode {
           <dl className="mt-5 space-y-3 text-sm">
             <div className="flex justify-between">
               <dt className="text-[var(--tg-theme-hint-color,#8e8e93)]">
-                Estimated value
+                Stars
               </dt>
-              <dd className="font-semibold">${quote.usdValue}</dd>
+              <dd className="font-semibold">
+                ⭐ {quote.starsAmount.toLocaleString()}
+              </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-[var(--tg-theme-hint-color,#8e8e93)]">
                 Rate
               </dt>
+              <dd className="font-semibold">${quote.starUsdRate} per Star</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--tg-theme-hint-color,#8e8e93)]">
+                Gross USD value
+              </dt>
+              <dd className="font-semibold">${quote.usdValue}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--tg-theme-hint-color,#8e8e93)]">
+                Platform fee ({quote.platformFeePercent}%)
+              </dt>
               <dd className="font-semibold">
-                ${quote.exchangeRate} / {quote.payoutAsset}
+                -${Number(quote.fees).toFixed(2)}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--tg-theme-hint-color,#8e8e93)]">
+                Net payout value
+              </dt>
+              <dd className="font-semibold">${quote.netUsdValue}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[var(--tg-theme-hint-color,#8e8e93)]">
+                {quote.payoutAsset} price
+              </dt>
+              <dd className="font-semibold">
+                $
+                {Number(quote.exchangeRate).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </dd>
             </div>
             <div className="flex justify-between">
@@ -147,6 +179,16 @@ export function QuickSellAmount(): React.ReactNode {
                 {quote.payoutAmount} {quote.payoutAsset}
               </dd>
             </div>
+            {quote.priceUpdatedAt ? (
+              <div className="flex justify-between gap-4 text-xs">
+                <dt className="text-[var(--tg-theme-hint-color,#8e8e93)]">
+                  Price timestamp
+                </dt>
+                <dd className="text-right">
+                  {new Date(quote.priceUpdatedAt).toLocaleString()}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         </section>
       ) : null}
